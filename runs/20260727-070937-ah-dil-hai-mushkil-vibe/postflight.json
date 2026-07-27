@@ -1,0 +1,58 @@
+{
+  "battery": {
+    "ac_powered": false,
+    "battery_temp_c": 32.3,
+    "battery_temp_tenths_c": 323,
+    "charge_counter_uah": 2780000,
+    "charging_state": 0,
+    "dock_powered": false,
+    "health_code": 2,
+    "level_pct": 78,
+    "raw": "Current OPLUS Battery Service state:\n  Charger voltage : 0\n  Battery current : 169\n  ChargerTechnology: 0\n  ChargeFastCharger: false\n  PlugType: 0\n  UpdatesStopped: false\n  UsbHwStatus: 0\n  BatteryHwStatus: 1\n  HwStatusIsSet: 1\n  BatteryIcStatus: 0\n  IcStatusIsSet: 1\n\n  mUsbStatus: 0\n  PhoneTemp: 320\n  ThermalFeatureOn: true\nCurrent Battery Service state:\n  AC powered: false\n  USB powered: false\n  Wireless powered: false\n  Dock powered: false\n  Max charging current: 0\n  Max charging voltage: 0\n  Charge counter: 2780000\n  status: 3\n  health: 2\n  present: true\n  level: 78\n  scale: 100\n  voltage: 4\n  temperature: 323\n  technology: Li-ion\n  Charging state: 0\n  Charging policy: 0\n",
+    "status_code": 3,
+    "usb_powered": false,
+    "vendor_battery_current_raw": 169,
+    "vendor_fast_charger": false,
+    "vendor_phone_temp_c": 32.0,
+    "vendor_phone_temp_tenths_c": 320,
+    "vendor_plug_type": 0,
+    "wireless_powered": false
+  },
+  "thermal": {
+    "hal_temperatures_c": {
+      "BATTERY": {
+        "status_code": 0,
+        "type_code": 2,
+        "value_c": 32.3
+      },
+      "CPU": {
+        "status_code": 0,
+        "type_code": 0,
+        "value_c": 39.078
+      },
+      "GPU": {
+        "status_code": 0,
+        "type_code": 1,
+        "value_c": 39.078
+      },
+      "NPU": {
+        "status_code": 0,
+        "type_code": 9,
+        "value_c": 39.078
+      },
+      "POWER_AMPLIFIER": {
+        "status_code": 0,
+        "type_code": 5,
+        "value_c": 35.476
+      },
+      "SKIN": {
+        "status_code": 0,
+        "type_code": 3,
+        "value_c": 34.83
+      }
+    },
+    "raw": "IsStatusOverride: false\nThermalEventListeners:\n\tcallbacks: 4\n\tkilled: false\n\tbroadcasts count: -1\nThermalStatusListeners:\n\tcallbacks: 9\n\tkilled: false\n\tbroadcasts count: -1\nThermal Status: 0\nCached temperatures:\n\tTemperature{mValue=72.623, mType=0, mName=CPU, mStatus=0}\n\tTemperature{mValue=72.623, mType=1, mName=GPU, mStatus=0}\n\tTemperature{mValue=72.879, mType=9, mName=NPU, mStatus=0}\n\tTemperature{mValue=47.501, mType=3, mName=SKIN, mStatus=0}\n\tTemperature{mValue=35.0, mType=3, mName=shell_skin, mStatus=0}\n\tTemperature{mValue=29.2, mType=2, mName=BATTERY, mStatus=0}\n\tTemperature{mValue=36.98, mType=5, mName=POWER_AMPLIFIER, mStatus=0}\nHAL Ready: true\nHAL connection:\n\tThermalHAL 2.0 connected: yes\nCurrent temperatures from HAL:\n\tTemperature{mValue=39.078, mType=0, mName=CPU, mStatus=0}\n\tTemperature{mValue=39.078, mType=1, mName=GPU, mStatus=0}\n\tTemperature{mValue=32.3, mType=2, mName=BATTERY, mStatus=0}\n\tTemperature{mValue=34.83, mType=3, mName=SKIN, mStatus=0}\n\tTemperature{mValue=35.476, mType=5, mName=POWER_AMPLIFIER, mStatus=0}\n\tTemperature{mValue=39.078, mType=9, mName=NPU, mStatus=0}\nCurrent cooling devices from HAL:\n\tCoolingDevice{mValue=0, mType=2, mName=thermal-cpufreq-0}\n\tCoolingDevice{mValue=0, mType=2, mName=thermal-cpufreq-1}\n\tCoolingDevice{mValue=0, mType=4, mName=mutt-pa1}\n\tCoolingDevice{mValue=0, mType=4, mName=mutt-pa2}\n\tCoolingDevice{mValue=0, mType=4, mName=tx-pwr-pa1}\n\tCoolingDevice{mValue=0, mType=4, mName=tx-pwr-pa2}\n\tCoolingDevice{mValue=0, mType=4, mName=scg-off-pa2}\n\tCoolingDevice{mValue=0, mType=2, mName=thermal-devfreq-0}\nTemperature static thresholds from HAL:\n\tTemperatureThreshold{mType=0, mName=CPU, mHotThrottlingThresholds=[NaN, NaN, NaN, 85.0, 90.0, 100.0, 117.0], mColdThrottlingThresholds=[NaN, NaN, NaN, NaN, NaN, NaN, NaN]}\n\tTemperatureThreshold{mType=1, mName=GPU, mHotThrottlingThresholds=[NaN, NaN, NaN, 85.0, 90.0, 100.0, 117.0], mColdThrottlingThresholds=[NaN, NaN, NaN, NaN, NaN, NaN, NaN]}\n\tTemperatureThreshold{mType=2, mName=BATTERY, mHotThrottlingThresholds=[NaN, NaN, NaN, 50.0, 55.0, 59.0, 90.0], mColdThrottlingThresholds=[NaN, NaN, NaN, NaN, NaN, NaN, NaN]}\n\tTemperatureThreshold{mType=3, mName=SKIN, mHotThrottlingThresholds=[NaN, NaN, NaN, 50.0, 59.0, 61.0, 83.0], mColdThrottlingThresholds=[NaN, NaN, NaN, NaN, NaN, NaN, NaN]}\n\tTemperatureThreshold{mType=5, mName=POWER_AMPLIFIER, mHotThrottlingThresholds=[NaN, NaN, NaN, 68.0, 90.0, 100.0, 110.0], mColdThrottlingThresholds=[NaN, NaN, NaN, NaN, NaN, NaN, NaN]}\n\tTemperatureThreshold{mType=9, mName=NPU, mHotThrottlingThresholds=[NaN, NaN, NaN, 85.0, 90.0, 100.0, 117.0], mColdThrottlingThresholds=[NaN, NaN, NaN, NaN, NaN, NaN, NaN]}\nTemperature headroom thresholds:\n[NaN, NaN, NaN, NaN, 1.3, 1.3666667, 2.1]\n",
+    "thermal_status_code": 0
+  },
+  "timestamp_utc": "2026-07-27T01:42:04.039312+00:00"
+}

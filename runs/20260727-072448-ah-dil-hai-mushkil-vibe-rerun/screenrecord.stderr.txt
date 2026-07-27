@@ -1,0 +1,2 @@
+2026-07-27 07:24:48.898 scrcpy[7757:27622223] No video mirroring, SDK mouse disabled
+/opt/homebrew/Cellar/scrcpy/4.1/share/scrcpy/scrcpy-server: 1 file pushed, 0 skipped. 54.6 MB/s (733706 bytes in 0.013s)

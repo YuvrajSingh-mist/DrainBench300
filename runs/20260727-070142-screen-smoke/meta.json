@@ -1,0 +1,14 @@
+{
+  "command": [
+    "python3",
+    "-c",
+    "import time; time.sleep(3)"
+  ],
+  "label": "screen-smoke",
+  "remote_screenrecord_path": "/sdcard/Download/DrainBench/20260727-070142-screen-smoke.mp4",
+  "run_id": "20260727-070142-screen-smoke",
+  "sample_interval_seconds": 1.0,
+  "screenrecord_pid": 10045,
+  "serial": "172.18.11.243:5555",
+  "started_at_utc": "2026-07-27T01:31:42.258975+00:00"
+}

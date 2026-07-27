@@ -1,0 +1,274 @@
+
+✨ Try Mobilerun Cloud: https://cloud.mobilerun.ai/sign-in
+
+INFO mobilerun 🚀 Starting: search for "ah dil hai mushkil" song exactly and 
+play for like 30 sec to get the vibe
+DEBUG mobilerun Anonymized telemetry enabled. See 
+https://docs.mobilerun.ai/v3/guides/telemetry for more information.
+INFO mobilerun 🤖 Agent mode: direct execution
+INFO mobilerun 👁️  Vision settings: Manager=False, Executor=False, 
+FastAgent=False
+DEBUG mobilerun Credentials disabled in config
+DEBUG mobilerun ✅ Loaded 0 secrets from in-memory dict
+DEBUG mobilerun 🔄 Loading LLMs from config (llms not provided)...
+DEBUG mobilerun 📋 Loading LLMs from config profiles...
+DEBUG mobilerun Loading LLM for profile: fast_agent
+DEBUG mobilerun Initializing Ollama with kwargs: ['temperature', 'base_url', 
+'context_window', 'model']
+DEBUG mobilerun Successfully loaded fast_agent LLM: Ollama/qwen3.5:9b
+DEBUG mobilerun Loading LLM for profile: app_opener
+DEBUG mobilerun Initializing Ollama with kwargs: ['temperature', 'base_url', 
+'context_window', 'model']
+DEBUG mobilerun Successfully loaded app_opener LLM: Ollama/qwen3.5:9b
+DEBUG mobilerun 🧠 Loaded 2 agent-specific LLMs from profiles
+DEBUG mobilerun ✅ MobileAgent initialized successfully.
+DEBUG mobilerun ▶️  Starting agent execution...
+DEBUG mobilerun Press Ctrl+C to stop
+INFO mobilerun 🚀 Running MobileAgent to achieve goal: search for "ah dil hai 
+mushkil" song exactly and play for like 30 sec to get the vibe
+DEBUG mobilerun 🔄 StartEvent
+DEBUG mobilerun Disabling unsupported tools: ['type_text']
+DEBUG mobilerun 🔄 Direct execution mode - executing goal: search for "ah dil 
+hai mushkil" song exactly and play for like 30 sec to get the vibe
+DEBUG mobilerun 🔧 Starting task execution...
+DEBUG mobilerun 🔧 Executing task: search for "ah dil hai mushkil" song exactly 
+and play for like 30 sec to get the vibe
+DEBUG mobilerun FastAgent initialized.
+DEBUG mobilerun Preparing chat for task execution...
+INFO mobilerun 🔄 Step 1/20
+DEBUG mobilerun Getting state (attempt 1/7)
+DEBUG mobilerun 💬 Task input received...
+DEBUG mobilerun State fetched in 1237ms
+INFO mobilerun FastAgent response:
+DEBUG mobilerun ✏️ Recording UI state
+INFO mobilerun IINFO mobilerun  needINFO mobilerun  toINFO mobilerun  playINFO mobilerun  "INFO mobilerun ahINFO mobilerun  dilINFO mobilerun  haiINFO mobilerun  mushINFO mobilerun kilINFO mobilerun "INFO mobilerun  songINFO mobilerun  fromINFO mobilerun  aINFO mobilerun  musicINFO mobilerun  streamingINFO mobilerun  serviceINFO mobilerun  orINFO mobilerun  videoINFO mobilerun  platformINFO mobilerun  likeINFO mobilerun  YouTubeINFO mobilerun .INFO mobilerun  IINFO mobilerun  donINFO mobilerun 'tINFO mobilerun  seeINFO mobilerun  SpotifyINFO mobilerun ,INFO mobilerun  YouTubeINFO mobilerun  MusicINFO mobilerun ,INFO mobilerun  orINFO mobilerun  anyINFO mobilerun  dedicatedINFO mobilerun  musicINFO mobilerun  appINFO mobilerun  directlyINFO mobilerun  visibleINFO mobilerun  onINFO mobilerun  thisINFO mobilerun  homeINFO mobilerun  screenINFO mobilerun .INFO mobilerun  TheINFO mobilerun  bestINFO mobilerun  approachINFO mobilerun  isINFO mobilerun  toINFO mobilerun  useINFO mobilerun  ChromeINFO mobilerun  (INFO mobilerun indexINFO mobilerun  1INFO mobilerun 6INFO mobilerun )INFO mobilerun  toINFO mobilerun  searchINFO mobilerun  forINFO mobilerun  andINFO mobilerun  streamINFO mobilerun  theINFO mobilerun  songINFO mobilerun  viaINFO mobilerun  YouTubeINFO mobilerun 'sINFO mobilerun  webINFO mobilerun  playerINFO mobilerun .INFO mobilerun 
+
+<functionINFO mobilerun _callsINFO mobilerun >INFO mobilerun 
+<invokeINFO mobilerun  nameINFO mobilerun ="INFO mobilerun clickINFO mobilerun ">INFO mobilerun 
+<parameterINFO mobilerun  nameINFO mobilerun ="INFO mobilerun indexINFO mobilerun ">INFO mobilerun 1INFO mobilerun 6INFO mobilerun </INFO mobilerun parameterINFO mobilerun >INFO mobilerun 
+</INFO mobilerun invokeINFO mobilerun >INFO mobilerun 
+</INFO mobilerun functionINFO mobilerun _callsINFO mobilerun >
+DEBUG mobilerun FastAgent response
+DEBUG mobilerun 🧠 Thinking: I need to play "ah dil hai mushkil" song from a 
+music streaming service or video platform like YouTube. I don't see Spotify, 
+YouTube Music, or any ded...
+DEBUG mobilerun 💻 Executing action code
+DEBUG mobilerun <function_calls>
+<invoke name="click">
+<parameter name="index">16</parameter>
+</invoke>
+</function_calls>
+DEBUG mobilerun Reasoning: I need to play "ah dil hai mushkil" song from a music
+streaming service or video platform like YouTube. I don't see Spotify, YouTube 
+Music, or any dedicated music app directly visible on this home screen. The best
+approach is to use Chrome (index 16) to search for and stream the song via 
+YouTube's web player.
+DEBUG mobilerun ⚡ Executing tool calls...
+DEBUG mobilerun Executing: click({'index': 16})
+INFO mobilerun 💡 Tool results:
+INFO mobilerun <function_results>
+<result>
+<name>click</name>
+<output>Clicked on Text: 'Chrome' | Class: TextView | Type: unknown | 
+Coordinates: (334, 1167)</output>
+</result>
+</function_results>
+DEBUG mobilerun 🔄 ToolExecutionEvent
+DEBUG mobilerun ⚡ Action result: <function_results>
+<result>
+<name>click</name>
+<output>Clicked on Text: 'Chrome' | Class: TextView |...
+INFO mobilerun 🔄 Step 2/20
+DEBUG mobilerun Getting state (attempt 1/7)
+DEBUG mobilerun 💬 Task input received...
+DEBUG mobilerun State fetched in 1403ms
+INFO mobilerun FastAgent response:
+DEBUG mobilerun ✏️ Recording UI state
+INFO mobilerun IINFO mobilerun 'mINFO mobilerun  inINFO mobilerun  ChromeINFO mobilerun 'sINFO mobilerun  newINFO mobilerun  tabINFO mobilerun  pageINFO mobilerun  withINFO mobilerun  theINFO mobilerun  GoogleINFO mobilerun  searchINFO mobilerun  barINFO mobilerun  readyINFO mobilerun  (INFO mobilerun indexINFO mobilerun  5INFO mobilerun ).INFO mobilerun  IINFO mobilerun 'llINFO mobilerun  searchINFO mobilerun  forINFO mobilerun  theINFO mobilerun  exactINFO mobilerun  songINFO mobilerun  titleINFO mobilerun  "INFO mobilerun ahINFO mobilerun  dilINFO mobilerun  haiINFO mobilerun  mushINFO mobilerun kilINFO mobilerun "INFO mobilerun  soINFO mobilerun  weINFO mobilerun  canINFO mobilerun  findINFO mobilerun  andINFO mobilerun  streamINFO mobilerun  itINFO mobilerun  fromINFO mobilerun  YouTubeINFO mobilerun  orINFO mobilerun  anotherINFO mobilerun  musicINFO mobilerun  serviceINFO mobilerun .INFO mobilerun 
+
+<functionINFO mobilerun _callsINFO mobilerun >INFO mobilerun 
+<invokeINFO mobilerun  nameINFO mobilerun ="INFO mobilerun clickINFO mobilerun ">INFO mobilerun 
+<parameterINFO mobilerun  nameINFO mobilerun ="INFO mobilerun indexINFO mobilerun ">INFO mobilerun 5INFO mobilerun </INFO mobilerun parameterINFO mobilerun >INFO mobilerun 
+</INFO mobilerun invokeINFO mobilerun >INFO mobilerun 
+<invokeINFO mobilerun  nameINFO mobilerun ="INFO mobilerun typeINFO mobilerun ">INFO mobilerun 
+<parameterINFO mobilerun  nameINFO mobilerun ="INFO mobilerun textINFO mobilerun ">INFO mobilerun ahINFO mobilerun  dilINFO mobilerun  haiINFO mobilerun  mushINFO mobilerun kilINFO mobilerun  songINFO mobilerun </INFO mobilerun parameterINFO mobilerun >INFO mobilerun 
+<parameterINFO mobilerun  nameINFO mobilerun ="INFO mobilerun clearINFO mobilerun ">INFO mobilerun trueINFO mobilerun </INFO mobilerun parameterINFO mobilerun >INFO mobilerun 
+</INFO mobilerun invokeINFO mobilerun >INFO mobilerun 
+</INFO mobilerun functionINFO mobilerun _callsINFO mobilerun >
+DEBUG mobilerun FastAgent response
+DEBUG mobilerun 🧠 Thinking: I'm in Chrome's new tab page with the Google search
+bar ready (index 5). I'll search for the exact song title "ah dil hai mushkil" 
+so we can find and ...
+DEBUG mobilerun 💻 Executing action code
+DEBUG mobilerun <function_calls>
+<invoke name="click">
+<parameter name="index">5</parameter>
+</invoke>
+<invoke name="type">
+<parameter name="text">ah dil hai mushkil song</parameter>
+<parameter name="clear">true</parameter>
+</invoke>
+</function_calls>
+DEBUG mobilerun Reasoning: I'm in Chrome's new tab page with the Google search 
+bar ready (index 5). I'll search for the exact song title "ah dil hai mushkil" 
+so we can find and stream it from YouTube or another music service.
+DEBUG mobilerun ⚡ Executing tool calls...
+DEBUG mobilerun Executing: click({'index': 5})
+DEBUG mobilerun Executing: type({'text': 'ah dil hai mushkil song', 'clear': 
+True})
+DEBUG mobilerun 🔄 ToolExecutionEvent
+INFO mobilerun 💡 Tool results:
+INFO mobilerun <function_results>
+<result>
+<name>click</name>
+<output>Clicked on Text: 'Search Google or type URL' | Class: EditText | Type: 
+unknown | Coordinates: (462, 624)</output>
+</result>
+<result>
+<name>type</name>
+<output>Text typed successfully (clear=True)</output>
+</result>
+</function_results>
+DEBUG mobilerun 🔄 ToolExecutionEvent
+DEBUG mobilerun ⚡ Action result: <function_results>
+<result>
+<name>click</name>
+<output>Clicked on Text: 'Search Google or type URL' ...
+INFO mobilerun 🔄 Step 3/20
+DEBUG mobilerun Getting state (attempt 1/7)
+DEBUG mobilerun 💬 Task input received...
+DEBUG mobilerun State fetched in 1445ms
+INFO mobilerun FastAgent response:
+DEBUG mobilerun ✏️ Recording UI state
+INFO mobilerun IINFO mobilerun  seeINFO mobilerun  GoogleINFO mobilerun  autoINFO mobilerun -cINFO mobilerun orrectINFO mobilerun edINFO mobilerun  itINFO mobilerun  slightlyINFO mobilerun  butINFO mobilerun  theINFO mobilerun  firstINFO mobilerun  suggestionINFO mobilerun  (INFO mobilerun indexINFO mobilerun  1INFO mobilerun 3INFO mobilerun )INFO mobilerun  showsINFO mobilerun  exactlyINFO mobilerun  whatINFO mobilerun  weINFO mobilerun  wantINFO mobilerun :INFO mobilerun  "INFO mobilerun ahINFO mobilerun  dilINFO mobilerun  haiINFO mobilerun  mushINFO mobilerun kilINFO mobilerun  songINFO mobilerun ".INFO mobilerun  IINFO mobilerun 'llINFO mobilerun  tapINFO mobilerun  thatINFO mobilerun  suggestionINFO mobilerun  toINFO mobilerun  searchINFO mobilerun  forINFO mobilerun  theINFO mobilerun  exactINFO mobilerun  titleINFO mobilerun  andINFO mobilerun  findINFO mobilerun  aINFO mobilerun  playableINFO mobilerun  versionINFO mobilerun ,INFO mobilerun  preferablyINFO mobilerun  fromINFO mobilerun  YouTubeINFO mobilerun  orINFO mobilerun  anotherINFO mobilerun  streamingINFO mobilerun  serviceINFO mobilerun .INFO mobilerun 
+
+<functionINFO mobilerun _callsINFO mobilerun >INFO mobilerun 
+<invokeINFO mobilerun  nameINFO mobilerun ="INFO mobilerun clickINFO mobilerun ">INFO mobilerun 
+<parameterINFO mobilerun  nameINFO mobilerun ="INFO mobilerun indexINFO mobilerun ">INFO mobilerun 1INFO mobilerun 2INFO mobilerun </INFO mobilerun parameterINFO mobilerun >INFO mobilerun 
+</INFO mobilerun invokeINFO mobilerun >INFO mobilerun 
+</INFO mobilerun functionINFO mobilerun _callsINFO mobilerun >
+DEBUG mobilerun FastAgent response
+DEBUG mobilerun 🧠 Thinking: I see Google auto-corrected it slightly but the 
+first suggestion (index 13) shows exactly what we want: "ah dil hai mushkil 
+song". I'll tap that sugge...
+DEBUG mobilerun 💻 Executing action code
+DEBUG mobilerun <function_calls>
+<invoke name="click">
+<parameter name="index">12</parameter>
+</invoke>
+</function_calls>
+DEBUG mobilerun Reasoning: I see Google auto-corrected it slightly but the first
+suggestion (index 13) shows exactly what we want: "ah dil hai mushkil song". 
+I'll tap that suggestion to search for the exact title and find a playable 
+version, preferably from YouTube or another streaming service.
+DEBUG mobilerun ⚡ Executing tool calls...
+DEBUG mobilerun Executing: click({'index': 12})
+INFO mobilerun 💡 Tool results:
+INFO mobilerun <function_results>
+<result>
+<name>click</name>
+<output>Clicked on Text: 'ah dil hai mushkil song, 1 of 15 in the group .' | 
+Class: LinearLayout | Type: unknown | Coordinates: (606, 348)</output>
+</result>
+</function_results>
+DEBUG mobilerun 🔄 ToolExecutionEvent
+DEBUG mobilerun ⚡ Action result: <function_results>
+<result>
+<name>click</name>
+<output>Clicked on Text: 'ah dil hai mushkil song, 1 ...
+INFO mobilerun 🔄 Step 4/20
+DEBUG mobilerun Getting state (attempt 1/7)
+DEBUG mobilerun 💬 Task input received...
+DEBUG mobilerun State fetched in 1401ms
+INFO mobilerun FastAgent response:
+DEBUG mobilerun ✏️ Recording UI state
+INFO mobilerun TheINFO mobilerun  searchINFO mobilerun  wasINFO mobilerun  submittedINFO mobilerun  butINFO mobilerun  IINFO mobilerun  donINFO mobilerun 'tINFO mobilerun  seeINFO mobilerun  actualINFO mobilerun  searchINFO mobilerun  resultsINFO mobilerun  yetINFO mobilerun  —INFO mobilerun  justINFO mobilerun  theINFO mobilerun  URLINFO mobilerun  barINFO mobilerun  withINFO mobilerun  ourINFO mobilerun  queryINFO mobilerun .INFO mobilerun  TheINFO mobilerun  pageINFO mobilerun  isINFO mobilerun  likelyINFO mobilerun  stillINFO mobilerun  loadingINFO mobilerun  orINFO mobilerun  needsINFO mobilerun  usINFO mobilerun  toINFO mobilerun  scrollINFO mobilerun  downINFO mobilerun  toINFO mobilerun  viewINFO mobilerun  resultsINFO mobilerun .INFO mobilerun  LetINFO mobilerun  meINFO mobilerun  swipeINFO mobilerun  upINFO mobilerun  fromINFO mobilerun  theINFO mobilerun  bottomINFO mobilerun  ofINFO mobilerun  theINFO mobilerun  screenINFO mobilerun  toINFO mobilerun  revealINFO mobilerun  anyINFO mobilerun  contentINFO mobilerun  belowINFO mobilerun ,INFO mobilerun  whichINFO mobilerun  shouldINFO mobilerun  showINFO mobilerun  YouTubeINFO mobilerun  andINFO mobilerun  otherINFO mobilerun  musicINFO mobilerun  streamingINFO mobilerun  optionsINFO mobilerun  whereINFO mobilerun  weINFO mobilerun  canINFO mobilerun  playINFO mobilerun  "INFO mobilerun ahINFO mobilerun  dilINFO mobilerun  haiINFO mobilerun  mushINFO mobilerun kilINFO mobilerun ".INFO mobilerun 
+
+<functionINFO mobilerun _callsINFO mobilerun >INFO mobilerun 
+<invokeINFO mobilerun  nameINFO mobilerun ="INFO mobilerun swINFO mobilerun ipeINFO mobilerun ">INFO mobilerun 
+<parameterINFO mobilerun  nameINFO mobilerun ="INFO mobilerun coordinateINFO mobilerun ">INFO mobilerun [INFO mobilerun 4INFO mobilerun 8INFO mobilerun 0INFO mobilerun ,INFO mobilerun  1INFO mobilerun 2INFO mobilerun 0INFO mobilerun 6INFO mobilerun ]</INFO mobilerun parameterINFO mobilerun >INFO mobilerun 
+<parameterINFO mobilerun  nameINFO mobilerun ="INFO mobilerun coordinateINFO mobilerun 2INFO mobilerun ">INFO mobilerun [INFO mobilerun 5INFO mobilerun 3INFO mobilerun 7INFO mobilerun ,INFO mobilerun  9INFO mobilerun 6INFO mobilerun ]</INFO mobilerun parameterINFO mobilerun >INFO mobilerun 
+</INFO mobilerun invokeINFO mobilerun >INFO mobilerun 
+</INFO mobilerun functionINFO mobilerun _callsINFO mobilerun >
+DEBUG mobilerun FastAgent response
+DEBUG mobilerun 🧠 Thinking: The search was submitted but I don't see actual 
+search results yet — just the URL bar with our query. The page is likely still 
+loading or needs us to ...
+DEBUG mobilerun 💻 Executing action code
+DEBUG mobilerun <function_calls>
+<invoke name="swipe">
+<parameter name="coordinate">[480,1206]</parameter>
+<parameter name="coordinate2">[537,96]</parameter>
+</invoke>
+</function_calls>
+DEBUG mobilerun Reasoning: The search was submitted but I don't see actual 
+search results yet — just the URL bar with our query. The page is likely still 
+loading or needs us to scroll down to view results. Let me swipe up from the 
+bottom of the screen to reveal any content below, which should show YouTube and 
+other music streaming options where we can play "ah dil hai mushkil".
+DEBUG mobilerun ⚡ Executing tool calls...
+DEBUG mobilerun Executing: swipe({'coordinate': [480, 1206], 'coordinate2': 
+[537, 96]})
+INFO mobilerun 💡 Tool results:
+INFO mobilerun <function_results>
+<result>
+<name>swipe</name>
+<output>Swiped from (480, 1206) to (537, 96)</output>
+</result>
+</function_results>
+DEBUG mobilerun 🔄 ToolExecutionEvent
+DEBUG mobilerun ⚡ Action result: <function_results>
+<result>
+<name>swipe</name>
+<output>Swiped from (480, 1206) to (537, 96)</output>...
+INFO mobilerun 🔄 Step 5/20
+DEBUG mobilerun Getting state (attempt 1/7)
+DEBUG mobilerun 💬 Task input received...
+DEBUG mobilerun State fetched in 2402ms
+INFO mobilerun FastAgent response:
+DEBUG mobilerun ✏️ Recording UI state
+WARNING mobilerun Attempt 1 failed with error: ReadTimeout('')
+INFO mobilerun PerfectINFO mobilerun !INFO mobilerun  IINFO mobilerun  canINFO mobilerun  seeINFO mobilerun  multipleINFO mobilerun  videoINFO mobilerun  resultsINFO mobilerun  forINFO mobilerun  theINFO mobilerun  songINFO mobilerun  fromINFO mobilerun  YouTubeINFO mobilerun  andINFO mobilerun  SonyINFO mobilerun  MusicINFO mobilerun  IndiaINFO mobilerun .INFO mobilerun  TheINFO mobilerun  firstINFO mobilerun  resultINFO mobilerun  (INFO mobilerun indexINFO mobilerun  2INFO mobilerun 8INFO mobilerun )INFO mobilerun  isINFO mobilerun  aINFO mobilerun  buttonINFO mobilerun  toINFO mobilerun  playINFO mobilerun  "INFO mobilerun AINFO mobilerun eINFO mobilerun  DilINFO mobilerun  HaiINFO mobilerun  MushINFO mobilerun kilINFO mobilerun  -INFO mobilerun  4INFO mobilerun kINFO mobilerun  MusicINFO mobilerun  VideoINFO mobilerun "INFO mobilerun  directlyINFO mobilerun  inINFO mobilerun  ChromeINFO mobilerun  viaINFO mobilerun  GoogleINFO mobilerun 'sINFO mobilerun  embeddedINFO mobilerun  playerINFO mobilerun .INFO mobilerun  ThisINFO mobilerun  willINFO mobilerun  letINFO mobilerun  usINFO mobilerun  streamINFO mobilerun  aboutINFO mobilerun  3INFO mobilerun 0INFO mobilerun  secondsINFO mobilerun  ofINFO mobilerun  theINFO mobilerun  trackINFO mobilerun  rightINFO mobilerun  hereINFO mobilerun  withoutINFO mobilerun  needingINFO mobilerun  anotherINFO mobilerun  appINFO mobilerun .INFO mobilerun 
+
+<functionINFO mobilerun _callsINFO mobilerun >INFO mobilerun 
+<invokeINFO mobilerun  nameINFO mobilerun ="INFO mobilerun clickINFO mobilerun ">INFO mobilerun 
+<parameterINFO mobilerun  nameINFO mobilerun ="INFO mobilerun indexINFO mobilerun ">INFO mobilerun 2INFO mobilerun 8INFO mobilerun </INFO mobilerun parameterINFO mobilerun >INFO mobilerun 
+</INFO mobilerun invokeINFO mobilerun >INFO mobilerun 
+</INFO mobilerun functionINFO mobilerun _callsINFO mobilerun >
+DEBUG mobilerun FastAgent response
+DEBUG mobilerun 🧠 Thinking: Perfect! I can see multiple video results for the 
+song from YouTube and Sony Music India. The first result (index 28) is a button 
+to play "Ae Dil Hai ...
+DEBUG mobilerun 💻 Executing action code
+DEBUG mobilerun <function_calls>
+<invoke name="click">
+<parameter name="index">28</parameter>
+</invoke>
+</function_calls>
+DEBUG mobilerun Reasoning: Perfect! I can see multiple video results for the 
+song from YouTube and Sony Music India. The first result (index 28) is a button 
+to play "Ae Dil Hai Mushkil - 4k Music Video" directly in Chrome via Google's 
+embedded player. This will let us stream about 30 seconds of the track right 
+here without needing another app.
+DEBUG mobilerun ⚡ Executing tool calls...
+DEBUG mobilerun Executing: click({'index': 28})
+INFO mobilerun 💡 Tool results:
+INFO mobilerun <function_results>
+<result>
+<name>click</name>
+<output>Clicked on Text: 'Ae Dil Hai Mushkil - 4k Music Video | Ranbir Kapoor | 
+Anushka ... by Sony Music India on YouTube. Play on Google. 5:07' | Class: 
+Button | Type: unknown | Coordinates: (250, 432)</output>
+</result>
+</function_results>
+DEBUG mobilerun 🔄 ToolExecutionEvent
+DEBUG mobilerun ⚡ Action result: <function_results>
+<result>
+<name>click</name>
+<output>Clicked on Text: 'Ae Dil Hai Mushkil - 4k Mus...
+INFO mobilerun 🔄 Step 6/20
+DEBUG mobilerun Getting state (attempt 1/7)
+DEBUG mobilerun 💬 Task input received...
+DEBUG mobilerun State fetched in 1434ms
+INFO mobilerun FastAgent response:
+DEBUG mobilerun ✏️ Recording UI state
