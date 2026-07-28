@@ -1,6 +1,0 @@
-[server] INFO: Device: [OnePlus] OnePlus CPH2423 (Android 15)
-scrcpy 4.1 <https://github.com/Genymobile/scrcpy>
-INFO: ADB device found:
-INFO:     --> (tcpip)  172.18.11.243:5555              device  CPH2423
-INFO: Recording started to mp4 file: runs/20260727-072448-ah-dil-hai-mushkil-vibe-rerun/screen.mp4
-INFO: Recording complete to mp4 file: runs/20260727-072448-ah-dil-hai-mushkil-vibe-rerun/screen.mp4
