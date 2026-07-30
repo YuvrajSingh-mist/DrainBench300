@@ -11,12 +11,87 @@ import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
-from urllib.parse import urljoin
 
 
 def utc_now() -> str:
     """Return the current UTC timestamp used in JSONL log entries."""
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+
+def with_stream_usage_requested(payload: dict[str, Any]) -> dict[str, Any]:
+    """Return a copy of a streamed request payload with usage reporting turned on.
+
+    llama.cpp only emits a trailing usage-bearing SSE chunk when the request asks
+    for it via `stream_options.include_usage`; without this, token counts for
+    streamed requests are unrecoverable after the fact.
+    """
+    if not payload.get("stream"):
+        return payload
+    updated = dict(payload)
+    stream_options = dict(updated.get("stream_options") or {})
+    stream_options.setdefault("include_usage", True)
+    updated["stream_options"] = stream_options
+    return updated
+
+
+def parse_sse_events(text: str) -> list[dict[str, Any]]:
+    """Parse a `text/event-stream` body into its individual JSON event payloads."""
+    events: list[dict[str, Any]] = []
+    for block in text.split("\n\n"):
+        for line in block.splitlines():
+            stripped = line.strip()
+            if not stripped.startswith("data:"):
+                continue
+            data = stripped[len("data:"):].strip()
+            if not data or data == "[DONE]":
+                continue
+            try:
+                parsed = json.loads(data)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(parsed, dict):
+                events.append(parsed)
+    return events
+
+
+def merge_stream_events(events: list[dict[str, Any]]) -> dict[str, Any]:
+    """Merge `chat.completion.chunk` SSE events into one completion-shaped payload."""
+    if not events:
+        return {}
+    merged: dict[str, Any] = {"usage": None, "timings": None, "id": None, "model": None, "choices": [{"finish_reason": None}]}
+    for event in events:
+        if event.get("id"):
+            merged["id"] = event["id"]
+        if event.get("model"):
+            merged["model"] = event["model"]
+        if event.get("usage") is not None:
+            merged["usage"] = event["usage"]
+        if event.get("timings") is not None:
+            merged["timings"] = event["timings"]
+        choices = event.get("choices")
+        if isinstance(choices, list) and choices:
+            finish_reason = choices[0].get("finish_reason")
+            if finish_reason is not None:
+                merged["choices"] = [{"finish_reason": finish_reason}]
+    return merged
+
+
+def parse_response_payload(body: bytes) -> dict[str, Any]:
+    """Parse an upstream response body into a completion-shaped dict, streamed or not.
+
+    Handles both plain JSON and SSE (Server-Sent Events). OpenRouter prepends SSE
+    comment lines (``: OPENROUTER PROCESSING``) before the ``data:`` chunks, so
+    we check for ``data:`` anywhere in the body, not just at the start.
+    """
+    text = body.decode(errors="ignore")
+    # SSE detection: look for "data:" at the start of any line, not just line 0
+    if "\ndata:" in text or text.lstrip().startswith("data:"):
+        return merge_stream_events(parse_sse_events(text))
+    try:
+        payload = json.loads(text) if text else {}
+    except json.JSONDecodeError:
+        return {}
+    return payload if isinstance(payload, dict) else {}
 
 
 class ProxyHandler(BaseHTTPRequestHandler):
@@ -30,11 +105,25 @@ class ProxyHandler(BaseHTTPRequestHandler):
         return self.rfile.read(length) if length else b""
 
     def _forward(self, method: str, path: str, body: bytes) -> tuple[int, dict[str, str], bytes]:
-        """Forward one request to the upstream model server."""
-        target = urljoin(self.server.upstream_base, path)  # type: ignore[attr-defined]
+        """Forward one request to the upstream model server.
+
+        Uses simple string concatenation (not urljoin) so that multi-segment base
+        paths like ``https://openrouter.ai/api`` don't lose their prefix when the
+        incoming path (``/v1/chat/completions``) is absolute.
+        """
+        target = self.server.upstream_base.rstrip("/") + path  # type: ignore[attr-defined]
         headers = {
             "Content-Type": self.headers.get("Content-Type", "application/json"),
+            # Some hosted upstreams block Python's default
+            # "Python-urllib/x.y" User-Agent outright (error code 1010) - a local llama-server
+            # doesn't care either way, so it's always safe to send a normal-looking one.
+            "User-Agent": "curl/8.7.1",
         }
+        auth = self.headers.get("Authorization")
+        if auth:
+            # Real authenticated upstreams (OpenRouter, OpenAI) need this; a local llama-server
+            # ignores it, so it's always safe to forward whatever the client sent.
+            headers["Authorization"] = auth
         req = urllib.request.Request(target, data=body if method != "GET" else None, headers=headers, method=method)
         with urllib.request.urlopen(req, timeout=self.server.timeout_seconds) as resp:  # type: ignore[attr-defined]
             response_body = resp.read()
@@ -52,9 +141,9 @@ class ProxyHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def _log_completion(self, request_payload: dict[str, Any], response_payload: dict[str, Any], elapsed_ms: float) -> None:
+    def _log_completion(self, request_payload: dict[str, Any], response_payload: dict[str, Any], elapsed_ms: float, *, raw_body: bytes | None = None) -> None:
         """Append one completion timing record to the JSONL log."""
-        entry = {
+        entry: dict[str, Any] = {
             "timestamp_utc": utc_now(),
             "kind": "chat.completion",
             "elapsed_proxy_ms": elapsed_ms,
@@ -65,7 +154,6 @@ class ProxyHandler(BaseHTTPRequestHandler):
                 "message_count": len(request_payload.get("messages", [])) if isinstance(request_payload.get("messages"), list) else None,
             },
             "usage": response_payload.get("usage"),
-            "timings": response_payload.get("timings"),
             "id": response_payload.get("id"),
             "model": response_payload.get("model"),
             "finish_reason": (
@@ -74,6 +162,10 @@ class ProxyHandler(BaseHTTPRequestHandler):
                 else None
             ),
         }
+        # Include a preview of unparseable response bodies for debugging
+        if raw_body is not None:
+            preview = raw_body.decode(errors="replace")[:500]
+            entry["response_body_preview"] = preview
         with self.server.log_path.open("a", encoding="utf-8") as handle:  # type: ignore[attr-defined]
             handle.write(json.dumps(entry, sort_keys=True) + "\n")
 
@@ -101,18 +193,19 @@ class ProxyHandler(BaseHTTPRequestHandler):
         except json.JSONDecodeError:
             self._write_response(400, {"Content-Type": "application/json"}, b'{"error":"invalid json"}')
             return
+        forward_payload = with_stream_usage_requested(request_payload)
+        forward_body = json.dumps(forward_payload).encode() if forward_payload is not request_payload else body
         try:
-            status, headers, resp_body = self._forward("POST", self.path, body)
+            status, headers, resp_body = self._forward("POST", self.path, forward_body)
         except urllib.error.HTTPError as exc:
-            self._write_response(exc.code, {"Content-Type": "application/json"}, exc.read())
+            error_body = exc.read()
+            elapsed_ms = (time.monotonic() - start) * 1000.0
+            self._log_completion(request_payload, {}, elapsed_ms, raw_body=error_body)
+            self._write_response(exc.code, {"Content-Type": "application/json"}, error_body)
             return
         elapsed_ms = (time.monotonic() - start) * 1000.0
-        try:
-            response_payload = json.loads(resp_body.decode())
-        except json.JSONDecodeError:
-            response_payload = {}
-        if isinstance(response_payload, dict):
-            self._log_completion(request_payload, response_payload, elapsed_ms)
+        response_payload = parse_response_payload(resp_body)
+        self._log_completion(request_payload, response_payload, elapsed_ms, raw_body=resp_body if not response_payload else None)
         self._write_response(status, headers, resp_body)
 
     def log_message(self, format: str, *args: Any) -> None:  # noqa: A003

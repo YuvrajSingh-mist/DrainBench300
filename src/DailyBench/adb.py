@@ -1,8 +1,9 @@
-"""ADB helpers for DrainBench benchmark runs."""
+"""ADB helpers for DailyBench benchmark runs."""
 
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 import time
@@ -12,6 +13,31 @@ from typing import Any
 THERMAL_RE = re.compile(
     r"Temperature\{mValue=(?P<value>[-0-9.]+), mType=(?P<type>\d+), mName=(?P<name>[^,]+), mStatus=(?P<status>\d+)\}"
 )
+FOREGROUND_PACKAGE_RE = re.compile(r"mCurrentFocus=Window\{[^}]*\su\d+\s+([a-zA-Z0-9_.]+)/")
+
+# The OnePlus/ColorOS launcher on the benchmark's target device keeps a stale Recents card for
+# a force-stopped app until it's explicitly dismissed - force-stop kills the process, but Recents
+# is launcher-owned task history, not process state. This matches that launcher's "Close all"
+# control by resource-id (other launchers may not expose one - clear_recents() treats that as a
+# no-op, not an error).
+_CLEAR_ALL_BUTTON_RE = re.compile(
+    r'resource-id="[^"]*(?:btn_clear|clear_all)[^"]*"[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"'
+)
+_RECENTS_DUMP_PATH = "/sdcard/dailybench_recents_dump.xml"
+
+# Never force-stopped even if found in the foreground: the mobilerun Portal is needed
+# for the *next* task's own automation (auto_setup would just relaunch it anyway, but
+# there's no reason to churn it). Launcher/systemui packages vary by OEM skin, so
+# they're matched by substring in should_force_stop() instead of listed here.
+APP_RESET_EXCLUDED_PACKAGES = {"com.mobilerun.portal"}
+APP_RESET_EXCLUDED_SUBSTRINGS = ("launcher", "systemui")
+
+
+def should_force_stop(package: str) -> bool:
+    """Decide whether a foreground package is safe to force-stop for a between-task reset."""
+    if package in APP_RESET_EXCLUDED_PACKAGES:
+        return False
+    return not any(marker in package.lower() for marker in APP_RESET_EXCLUDED_SUBSTRINGS)
 
 
 def utc_now() -> str:
@@ -103,9 +129,72 @@ def capture_sample(serial: str) -> dict[str, Any]:
     }
 
 
+def get_foreground_package(serial: str) -> str | None:
+    """Return the package name currently focused on-screen, or None if it can't be determined."""
+    output = adb_shell(serial, "dumpsys window")
+    match = FOREGROUND_PACKAGE_RE.search(output)
+    return match.group(1) if match else None
+
+
+def force_stop_app(serial: str, package: str) -> None:
+    """Force-stop one Android package via `am force-stop`."""
+    run_checked(adb_cmd(serial, "shell", "am", "force-stop", package))
+
+
+def press_home(serial: str) -> None:
+    """Press the Home button, returning the device to the launcher."""
+    run_checked(adb_cmd(serial, "shell", "input", "keyevent", "KEYCODE_HOME"))
+
+
+def open_recents(serial: str) -> None:
+    """Open the Recents/Overview screen."""
+    run_checked(adb_cmd(serial, "shell", "input", "keyevent", "KEYCODE_APP_SWITCH"))
+
+
+def clear_recents(serial: str) -> bool:
+    """Best-effort: tap the launcher's "Close all" control in Recents, if present, then
+    return home. Returns True if a clear-all control was found and tapped, False if the
+    current launcher doesn't expose one (a no-op, not an error).
+    """
+    open_recents(serial)
+    time.sleep(1)
+    run_checked(adb_cmd(serial, "shell", "uiautomator", "dump", _RECENTS_DUMP_PATH))
+    dump = adb_shell(serial, f"cat {_RECENTS_DUMP_PATH}")
+    match = _CLEAR_ALL_BUTTON_RE.search(dump)
+    if not match:
+        press_home(serial)
+        return False
+    left, top, right, bottom = (int(value) for value in match.groups())
+    center_x, center_y = (left + right) // 2, (top + bottom) // 2
+    run_checked(adb_cmd(serial, "shell", "input", "tap", str(center_x), str(center_y)))
+    press_home(serial)
+    return True
+
+
+def reset_app_state(serial: str) -> str | None:
+    """Force-stop whatever app is in the foreground and return to the home screen.
+
+    Used between benchmark tasks for fairness: without this, a task can silently
+    inherit UI/navigation state left behind by whichever app the previous task's
+    agent happened to leave open, instead of starting fresh. Also clears any stale
+    Recents card left behind by the force-stop (see clear_recents). Returns the
+    package that was stopped, or None if nothing eligible was in the foreground.
+    """
+    package = get_foreground_package(serial)
+    stopped = None
+    if package and should_force_stop(package):
+        force_stop_app(serial, package)
+        stopped = package
+    clear_recents(serial)
+    return stopped
+
+
 def read_jsonl(path: str, start_offset: int) -> list[dict[str, Any]]:
-    """Read JSONL objects from a file starting at a byte offset."""
+    """Read JSONL objects from a file starting at a byte offset.
+    Returns an empty list if the file doesn't exist (e.g. the proxy logged nothing)."""
     entries: list[dict[str, Any]] = []
+    if not os.path.exists(path):
+        return entries
     with open(path, "r", encoding="utf-8") as handle:
         handle.seek(start_offset)
         for line in handle:
@@ -119,8 +208,3 @@ def read_jsonl(path: str, start_offset: int) -> list[dict[str, Any]]:
             if isinstance(payload, dict):
                 entries.append(payload)
     return entries
-
-
-def wait_briefly(seconds: float) -> None:
-    """Sleep briefly for tool startup/shutdown coordination."""
-    time.sleep(seconds)

@@ -1,36 +1,18 @@
-"""Pytest coverage for summary and task-output parsing."""
+"""Pytest coverage for summary generation and task-outcome typing."""
 
 from __future__ import annotations
 
-from drainbench.summary import extract_task_output, summarize
+from DailyBench.summary import TaskOutcome, summarize
 
 
-def test_extract_task_output_multiline_success() -> None:
-    stdout_text = """
-INFO mobilerun 🎉 Goal achieved: Successfully searched for "weather tomorrow"
-and opened the first result showing Tuesday's forecast: Rain, High of 27°C, Low
-of 26°C.
-DEBUG mobilerun 🔄 ResultEvent
-""".strip()
-    assert extract_task_output(stdout_text) == (
-        'Successfully searched for "weather tomorrow" and opened the first result '
-        "showing Tuesday's forecast: Rain, High of 27°C, Low of 26°C."
-    )
-
-
-def test_extract_task_output_failure_message() -> None:
-    stdout_text = """
-INFO mobilerun ❌ Goal failed: Battery percentage not visible in current UI
-elements. Unable to retrieve the current battery level.
-DEBUG mobilerun 🔄 ResultEvent
-""".strip()
-    assert extract_task_output(stdout_text) == (
-        "Battery percentage not visible in current UI elements. "
-        "Unable to retrieve the current battery level."
-    )
+def test_task_outcome_round_trips_through_model_dump() -> None:
+    """TaskOutcome carries mobilerun's ResultEvent fields straight through to a plain dict."""
+    outcome = TaskOutcome(success=True, reason="Replied to the latest email.", steps=4)
+    assert outcome.model_dump() == {"success": True, "reason": "Replied to the latest email.", "steps": 4}
 
 
 def test_summarize_combines_llm_and_phone_metrics() -> None:
+    """Baseline happy path: fully-populated phone samples and LLM completions aggregate to the expected totals."""
     samples = [
         {
             "battery": {"level_pct": 80, "charge_counter_uah": 5000, "battery_temp_c": 31.0},
@@ -63,6 +45,55 @@ def test_summarize_combines_llm_and_phone_metrics() -> None:
     ]
     summary = summarize(samples, meta, llm_entries)
     assert summary["llm_total_tokens_sum"] == 180
-    assert summary["llm_ttft_ms"] == 2000.0
+    assert summary["llm_prompt_tokens_sum"] == 150
+    assert summary["llm_completion_tokens_sum"] == 30
     assert summary["battery_level_delta_pct"] == -2
     assert summary["cpu_temp_max_c"] == 47.5
+
+
+def _base_meta() -> dict:
+    return {
+        "run_id": "run-null-usage",
+        "label": "demo",
+        "started_at_utc": "2026-07-28T00:00:00Z",
+        "ended_at_utc": "2026-07-28T00:02:00Z",
+        "elapsed_seconds": 77.0,
+        "command_exit_code": 0,
+    }
+
+
+def test_summarize_survives_null_usage_and_timings() -> None:
+    """A proxy that failed to parse a streamed response logs usage/timings as null."""
+    llm_entries = [
+        {"kind": "chat.completion", "usage": None, "timings": None},
+        {"kind": "chat.completion", "usage": None, "timings": None},
+    ]
+    summary = summarize([], _base_meta(), llm_entries)
+    assert summary["llm_completion_count"] == 2
+    assert summary["llm_prompt_tokens_sum"] == 0
+    assert summary["llm_completion_tokens_sum"] == 0
+    assert summary["llm_total_tokens_sum"] == 0
+
+
+def test_summarize_handles_mixed_null_and_populated_entries() -> None:
+    """One good completion and one with null usage should still aggregate the good one."""
+    llm_entries = [
+        {"kind": "chat.completion", "usage": None},
+        {
+            "kind": "chat.completion",
+            "usage": {"prompt_tokens": 40, "completion_tokens": 8, "total_tokens": 48},
+        },
+    ]
+    summary = summarize([], _base_meta(), llm_entries)
+    assert summary["llm_completion_count"] == 2
+    assert summary["llm_prompt_tokens_sum"] == 40
+    assert summary["llm_completion_tokens_sum"] == 8
+    assert summary["llm_total_tokens_sum"] == 48
+
+
+def test_summarize_with_no_llm_entries_skips_llm_fields() -> None:
+    """With zero LLM entries, only the request/completion counts are set and no aggregate llm_* fields appear."""
+    summary = summarize([], _base_meta(), [])
+    assert summary["llm_request_count"] == 0
+    assert summary["llm_completion_count"] == 0
+    assert "llm_total_tokens_sum" not in summary

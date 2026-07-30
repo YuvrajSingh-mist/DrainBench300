@@ -3,13 +3,16 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "drainbench300"
+name = "dailybench300"
 version = "0.1.0"
 description = "Benchmark harness for Droidrun / Mobilerun phone tasks."
-requires-python = ">=3.10"
+requires-python = ">=3.11,<3.14"
+dependencies = ["pydantic>=2.0", "mobilerun", "openai>=1.0", "python-dotenv>=1.0"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]
+tracing = ["arize-phoenix"]
+hf = ["huggingface_hub"]
 
 [tool.setuptools]
 package-dir = {"" = "src"}

@@ -1,6 +1,6 @@
 # Benchmark Specification
 
-DrainBench300 is a mobile-agent benchmark focused on Droidrun / Mobilerun style execution on a real Android device.
+DailyBench300 is a mobile-agent benchmark focused on Droidrun / Mobilerun style execution on a real Android device.
 
 ## Scope
 
@@ -10,7 +10,7 @@ DrainBench300 is a mobile-agent benchmark focused on Droidrun / Mobilerun style 
 - measurement:
   - end-to-end task latency
   - phone battery and thermal data
-  - model token and timing data
+  - model token data
 
 ## Benchmark unit
 
@@ -33,10 +33,10 @@ Each valid run should contain:
 - `preflight.json`
 - `postflight.json`
 - `samples.ndjson`
-- `summary.json`
-- `command.stdout.txt`
-- `command.stderr.txt`
+- `run_metrics.json`
+- `agent.log.txt`
 - `output.txt`
+- `output.json`
 
 Optional artifacts:
 
@@ -48,10 +48,9 @@ Optional artifacts:
 
 - `elapsed_seconds`
 - `command_exit_code`
+- `llm_prompt_tokens_sum`
+- `llm_completion_tokens_sum`
 - `llm_total_tokens_sum`
-- `llm_ttft_ms`
-- `llm_prefill_tokens_per_second`
-- `llm_decode_tokens_per_second`
 
 ## Action-budget policy
 

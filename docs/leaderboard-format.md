@@ -10,8 +10,6 @@ Recommended columns for published results:
 - open-ended rubric score
 - average elapsed seconds
 - average total tokens
-- average TTFT
-- average decode tokens/sec
 
 ## Notes
 

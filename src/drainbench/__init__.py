@@ -1,1 +1,0 @@
-"""DrainBench benchmark harness package."""

@@ -5,6 +5,9 @@ from __future__ import annotations
 import socket
 import subprocess
 import sys
+import time
+import urllib.error
+import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -65,6 +68,27 @@ def start_llm_proxy(run_dir: Path, upstream_base: str, preferred_port: int) -> t
     ]
     process = subprocess.Popen(cmd, stdout=stdout_path.open("w"), stderr=stderr_path.open("w"))
     return BackgroundProcess(process=process, stdout_path=stdout_path, stderr_path=stderr_path), port, log_jsonl
+
+
+def wait_for_proxy_ready(port: int, timeout: float = 10.0) -> None:
+    """Poll the local proxy's /healthz endpoint until it responds, or raise once the timeout elapses.
+
+    A fixed sleep isn't reliable startup-readiness: under real system load (disk/CPU
+    contention), even a trivial stdlib subprocess can take well over a couple of
+    seconds just to import and bind, and a race here silently turns into every LLM
+    call in the run failing with a connection error.
+    """
+    deadline = time.monotonic() + timeout
+    last_error: Exception | None = None
+    while time.monotonic() < deadline:
+        try:
+            with urllib.request.urlopen(f"http://127.0.0.1:{port}/healthz", timeout=1.0) as response:
+                if response.status == 200:
+                    return
+        except (urllib.error.URLError, OSError) as exc:
+            last_error = exc
+        time.sleep(0.1)
+    raise TimeoutError(f"LLM proxy on port {port} did not become ready within {timeout}s ({last_error})")
 
 
 def stop_process(proc: BackgroundProcess, *, sigint: bool = False) -> int | None:

@@ -1,4 +1,4 @@
-# DrainBench-730 (v3)
+# DailyBench-730 (v3)
 
 ### Everyday Queries for MobileAgentCostBench — medium and hard tiers rewritten to explicit step counts
 
@@ -860,10 +860,10 @@ A rubric built for "helpfulness/fluency" doesn't fit a goal-directed agent task.
 Judges measurably favor their own family: one study found GPT-5 grading its own outputs roughly 4 points higher (on a 100-point scale) than an equivalent third-party judge would, and same-family effects for other model families ran even higher. Practical rule: the judge model must be from a different provider than every model under test in that run — never Claude-judges-Claude or GPT-judges-GPT.
 
 **4. Calibrate the judge against a small human-labeled set before trusting it at scale.**
-Production LLM-judge deployments calibrate against several hundred human-labeled cases before trusting aggregate scores — that's the right scale for continuous, high-volume production monitoring, not a hard minimum for an 11-task bucket. Right-sized for DrainBench: hand-label every open-ended task at least once per model under test, and check judge/human agreement on that set before reporting the judge's scores as reliable. If agreement is weak, fix the rubric before publishing numbers built on it — don't publish first and caveat later.
+Production LLM-judge deployments calibrate against several hundred human-labeled cases before trusting aggregate scores — that's the right scale for continuous, high-volume production monitoring, not a hard minimum for an 11-task bucket. Right-sized for DailyBench: hand-label every open-ended task at least once per model under test, and check judge/human agreement on that set before reporting the judge's scores as reliable. If agreement is weak, fix the rubric before publishing numbers built on it — don't publish first and caveat later.
 
 **5. Report this bucket's score separately from the deterministic hard-tier success rate — never blend them.**
 A programmatically-verified pass/fail and an LLM-judge rubric score have different reliability profiles and different error bars. Folding them into one number hides which part of a model's score come from "actually got it right" versus "a judge model liked the answer." The leaderboard should show deterministic-tier success rate and open-ended rubric score as two separate columns.
 
 **6. Track judge cost separately, too.**
-Ensembling multiple judges (recommended to reduce single-judge bias) multiplies the judging token bill by however many judges are used — three judges is roughly three times the cost, before any human spot-checking. Since DrainBench's entire premise is honest cost accounting, the judging overhead itself needs to be logged and reported, not treated as a free add-on to the benchmark's own cost metric.
+Ensembling multiple judges (recommended to reduce single-judge bias) multiplies the judging token bill by however many judges are used — three judges is roughly three times the cost, before any human spot-checking. Since DailyBench's entire premise is honest cost accounting, the judging overhead itself needs to be logged and reported, not treated as a free add-on to the benchmark's own cost metric.
