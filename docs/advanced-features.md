@@ -71,6 +71,8 @@ uv run dailybench_tasks.py \
 
 `--phoenix-url`/`--phoenix-project` set the `phoenix_url`/`phoenix_project_name` env vars mobilerun reads (lowercase, per its docs) inside each `dailybench_runner.py` process; omit them to use mobilerun's own defaults (`http://0.0.0.0:6006`, no project grouping).
 
+**OpenRouter cost:** Phoenix's bundled model catalog doesn't include OpenRouter slugs, so their spans show $0.00 cost. Register real pricing once with [scripts/register_openrouter_pricing.py](../scripts/register_openrouter_pricing.py) — e.g. `uv run scripts/register_openrouter_pricing.py --model qwen/qwen3.6-plus` (see the README's Tracing section for all options). New spans for those models then carry real cost.
+
 **Trajectory recording** saves local screenshots + UI-state artifacts per step or per atomic action — independent of tracing, and it stays entirely on disk (nothing leaves your machine):
 
 ```bash

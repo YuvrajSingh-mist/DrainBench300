@@ -66,6 +66,22 @@ This must be running **before** you start any benchmark run. The server's web UI
 3. The `mobilerun` SDK sends every step (LLM chat, tool call, app launch, etc.) as spans to Phoenix
 4. View the full trace tree at [http://localhost:6006](http://localhost:6006)
 
+### Cost tracking (OpenRouter pricing)
+
+Phoenix prices LLM spans by matching `llm.model_name` against a built-in model catalog (OpenAI/Anthropic/Gemini/…). OpenRouter slugs like `qwen/qwen3.6-plus` aren't in that catalog, so their cost shows as **$0.00** even though token counts are recorded. Register real OpenRouter pricing so new spans get costed:
+
+```bash
+uv run scripts/register_openrouter_pricing.py --model qwen/qwen3.6-plus
+```
+
+This fetches live per-token prices from OpenRouter's model API and upserts them into `~/.phoenix/phoenix.db` as user-defined models; Phoenix's cost daemon picks them up within ~5 seconds. Options:
+
+- `--all` — register every model in OpenRouter's catalog
+- `--model A --model B` — register specific slugs (repeatable)
+- `--prompt-price-per-m 0.15 --completion-price-per-m 0.60` — set prices manually (USD per 1M tokens) without calling the API
+
+Existing spans are not retroactively repriced — run the script once, and new spans for those models carry real cost.
+
 ### Querying traces without the UI
 
 The Phoenix database is a standard SQLite file. Copy it before querying to avoid locks:
