@@ -55,7 +55,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--skip-unresolved", action="store_true")
     parser.add_argument("--serial", default=os.environ.get("DAILYBENCH_SERIAL"))
-    parser.add_argument("--sample-interval", type=float, default=1.0)
+    parser.add_argument("--sample-interval", type=float, default=0.1, help="Seconds between battery/thermal samples, forwarded to each task run (0.1 = every 100ms).")
     parser.add_argument("--llm-upstream-base", default=os.environ.get("LLM_UPSTREAM"))
     parser.add_argument("--llm-proxy-port-base", type=int, default=8090)
     parser.add_argument("--model", default=os.environ.get("MODEL"))

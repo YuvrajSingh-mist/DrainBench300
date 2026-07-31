@@ -35,12 +35,10 @@ def test_summarize_combines_llm_and_phone_metrics() -> None:
         {
             "kind": "chat.completion",
             "usage": {"prompt_tokens": 100, "completion_tokens": 20, "total_tokens": 120},
-            "timings": {"prompt_ms": 2000.0, "predicted_ms": 1000.0, "prompt_per_second": 50.0, "predicted_per_second": 20.0},
         },
         {
             "kind": "chat.completion",
             "usage": {"prompt_tokens": 50, "completion_tokens": 10, "total_tokens": 60},
-            "timings": {"prompt_ms": 1000.0, "predicted_ms": 500.0, "prompt_per_second": 50.0, "predicted_per_second": 20.0},
         },
     ]
     summary = summarize(samples, meta, llm_entries)
@@ -49,6 +47,10 @@ def test_summarize_combines_llm_and_phone_metrics() -> None:
     assert summary["llm_completion_tokens_sum"] == 30
     assert summary["battery_level_delta_pct"] == -2
     assert summary["cpu_temp_max_c"] == 47.5
+    # start/end snapshots live in preflight/postflight; run_metrics only keeps delta + max
+    assert "battery_level_start_pct" not in summary
+    assert "cpu_temp_start_c" not in summary
+    assert "cpu_temp_end_c" not in summary
 
 
 def _base_meta() -> dict:
@@ -62,11 +64,11 @@ def _base_meta() -> dict:
     }
 
 
-def test_summarize_survives_null_usage_and_timings() -> None:
-    """A proxy that failed to parse a streamed response logs usage/timings as null."""
+def test_summarize_survives_null_usage() -> None:
+    """A proxy that failed to parse a streamed response logs usage as null."""
     llm_entries = [
-        {"kind": "chat.completion", "usage": None, "timings": None},
-        {"kind": "chat.completion", "usage": None, "timings": None},
+        {"kind": "chat.completion", "usage": None},
+        {"kind": "chat.completion", "usage": None},
     ]
     summary = summarize([], _base_meta(), llm_entries)
     assert summary["llm_completion_count"] == 2

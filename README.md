@@ -45,6 +45,47 @@ HF_TOKEN=hf_...            # only needed for pushing dataset exports to Hugging 
 
 `.env` is gitignored and loaded automatically by both entrypoints (`dailybench_runner.py`/`dailybench_tasks.py`) via `python-dotenv` — no `export`, no `--env-file`, nothing else to configure. Leave any line blank if you don't need that feature yet; each one is independently optional (see the comments in `.env.example`).
 
+## Tracing (Phoenix)
+
+[Arize Phoenix](https://github.com/Arize-ai/phoenix) captures every LLM call, tool execution, and agent step as OpenTelemetry traces — essential for debugging runs, comparing model behavior, and auditing token usage. The `mobilerun` SDK auto-instruments traces when it detects a Phoenix server running locally.
+
+### Start the Phoenix server
+
+```bash
+uv run phoenix serve --port 6006
+```
+
+This must be running **before** you start any benchmark run. The server's web UI will be at [http://localhost:6006](http://localhost:6006).
+
+> **Note:** Phoenix stores its data in `~/.phoenix/phoenix.db` by default (a SQLite database). Traces accumulate across runs — you can query them directly with `sqlite3` or use the Phoenix UI to explore span trees, token counts, and latency.
+
+### How traces flow
+
+1. `phoenix serve` starts a gRPC (port 4317) and HTTP (port 6006/v1/traces) collector
+2. `dailybench_runner.py` / `dailybench_tasks.py` set `PHOENIX_HOST=localhost` and `PHOENIX_PORT=4317` automatically when they detect the server — no `--tracing` flag needed
+3. The `mobilerun` SDK sends every step (LLM chat, tool call, app launch, etc.) as spans to Phoenix
+4. View the full trace tree at [http://localhost:6006](http://localhost:6006)
+
+### Querying traces without the UI
+
+The Phoenix database is a standard SQLite file. Copy it before querying to avoid locks:
+
+```bash
+cp ~/.phoenix/phoenix.db /tmp/phoenix_copy.db
+sqlite3 /tmp/phoenix_copy.db "
+SELECT p.name as project,
+       COUNT(DISTINCT t.id) as traces,
+       COUNT(s.id) as spans,
+       SUM(s.llm_token_count_prompt + s.llm_token_count_completion) as total_tokens
+FROM projects p
+JOIN traces t ON t.project_rowid = p.id
+LEFT JOIN spans s ON s.trace_rowid = t.id
+GROUP BY p.name;
+"
+```
+
+The main tables are `traces`, `spans`, `projects`, and `span_annotations`. See [docs/advanced-features.md](docs/advanced-features.md) for more tracing configuration.
+
 ## Quick start
 
 ```bash
@@ -144,7 +185,7 @@ Or run a single one-off task with full harness artifacts:
 uv run dailybench_runner.py \
   --serial "$DAILYBENCH_SERIAL" \
   --label gmail-unread-count \
-  --sample-interval 1.0 \
+  --sample-interval 0.1 \
   --llm-upstream-base "$LLM_UPSTREAM" \
   --llm-proxy-port 8090 \
   --model "$MODEL" \

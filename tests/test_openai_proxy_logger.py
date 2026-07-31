@@ -62,8 +62,7 @@ SSE_BODY_WITH_TRAILING_USAGE = (
     'data: {"choices":[{"finish_reason":null,"index":0,"delta":{"content":"Hi"}}],'
     '"id":"chatcmpl-abc","model":"qwen","object":"chat.completion.chunk"}\n\n'
     'data: {"choices":[{"finish_reason":"length","index":0,"delta":{}}],'
-    '"id":"chatcmpl-abc","model":"qwen","object":"chat.completion.chunk",'
-    '"timings":{"prompt_ms":35.0,"predicted_ms":114.0,"prompt_per_second":28.0,"predicted_per_second":43.0}}\n\n'
+    '"id":"chatcmpl-abc","model":"qwen","object":"chat.completion.chunk"}\n\n'
     'data: {"choices":[],"id":"chatcmpl-abc","model":"qwen","object":"chat.completion.chunk",'
     '"usage":{"prompt_tokens":9,"completion_tokens":5,"total_tokens":14}}\n\n'
     "data: [DONE]\n\n"
@@ -84,12 +83,11 @@ def test_parse_sse_events_skips_malformed_json_chunk() -> None:
     assert events == [{"ok": True}]
 
 
-def test_merge_stream_events_combines_usage_and_timings_from_different_chunks() -> None:
-    """timings (on the finish_reason chunk) and usage (on a later, separate chunk) are merged into one payload."""
+def test_merge_stream_events_combines_usage_and_finish_reason_from_different_chunks() -> None:
+    """finish_reason (on an early chunk) and usage (on a later, separate chunk) are merged into one payload."""
     events = parse_sse_events(SSE_BODY_WITH_TRAILING_USAGE)
     merged = merge_stream_events(events)
     assert merged["usage"] == {"prompt_tokens": 9, "completion_tokens": 5, "total_tokens": 14}
-    assert merged["timings"]["prompt_ms"] == 35.0
     assert merged["choices"][0]["finish_reason"] == "length"
     assert merged["id"] == "chatcmpl-abc"
     assert merged["model"] == "qwen"
@@ -101,15 +99,14 @@ def test_merge_stream_events_with_no_events_returns_empty_dict() -> None:
 
 
 def test_parse_response_payload_recovers_usage_from_streamed_body() -> None:
-    """End-to-end: raw SSE response bytes in, a completion-shaped dict with real usage/timings out."""
+    """End-to-end: raw SSE response bytes in, a completion-shaped dict with real usage out."""
     payload = parse_response_payload(SSE_BODY_WITH_TRAILING_USAGE.encode())
     assert payload["usage"]["total_tokens"] == 14
-    assert payload["timings"]["predicted_ms"] == 114.0
 
 
 def test_parse_response_payload_handles_plain_json_body() -> None:
     """A non-streamed, plain-JSON response body is parsed the same way it was before the SSE fix."""
-    body = b'{"usage":{"total_tokens":3},"timings":{"prompt_ms":1.0},"id":"x","model":"m","choices":[{"finish_reason":"stop"}]}'
+    body = b'{"usage":{"total_tokens":3},"id":"x","model":"m","choices":[{"finish_reason":"stop"}]}'
     payload = parse_response_payload(body)
     assert payload["usage"]["total_tokens"] == 3
     assert payload["choices"][0]["finish_reason"] == "stop"

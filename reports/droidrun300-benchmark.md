@@ -34,7 +34,7 @@ Mobile GUI-agent benchmarks are a crowded, active research area — AndroidWorld
 
 **Task suite:** 300 queries — 100 easy, 100 medium, 78 hard-deterministic (composite, cross-app, independently verifiable), and 22 open-ended (ambiguous/subjective, graded separately via a calibrated rubric-based LLM-judge panel — never blended into the deterministic success rate).
 
-**Core metrics:** task success rate, cost (USD), latency (TTFT + total), battery/energy drain, and thermal drift — captured per step, on-device, via `BatteryManager` and thermal-zone polling, independent of whatever model is under test.
+**Core metrics:** task success rate, cost (USD), latency (total wall-clock time), battery/energy drain, and thermal drift — captured per step, on-device, via `BatteryManager` and thermal-zone polling, independent of whatever model is under test.
 
 ## Publishing Plan
 

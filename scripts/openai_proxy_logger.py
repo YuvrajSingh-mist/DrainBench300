@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tiny OpenAI-compatible proxy that logs llama.cpp timing/usage fields per request."""
+"""Tiny OpenAI-compatible proxy that logs per-request usage fields."""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ def utc_now() -> str:
 def with_stream_usage_requested(payload: dict[str, Any]) -> dict[str, Any]:
     """Return a copy of a streamed request payload with usage reporting turned on.
 
-    llama.cpp only emits a trailing usage-bearing SSE chunk when the request asks
+    Some upstreams only emit a trailing usage-bearing SSE chunk when the request asks
     for it via `stream_options.include_usage`; without this, token counts for
     streamed requests are unrecoverable after the fact.
     """
@@ -58,7 +58,7 @@ def merge_stream_events(events: list[dict[str, Any]]) -> dict[str, Any]:
     """Merge `chat.completion.chunk` SSE events into one completion-shaped payload."""
     if not events:
         return {}
-    merged: dict[str, Any] = {"usage": None, "timings": None, "id": None, "model": None, "choices": [{"finish_reason": None}]}
+    merged: dict[str, Any] = {"usage": None, "id": None, "model": None, "choices": [{"finish_reason": None}]}
     for event in events:
         if event.get("id"):
             merged["id"] = event["id"]
@@ -66,8 +66,6 @@ def merge_stream_events(events: list[dict[str, Any]]) -> dict[str, Any]:
             merged["model"] = event["model"]
         if event.get("usage") is not None:
             merged["usage"] = event["usage"]
-        if event.get("timings") is not None:
-            merged["timings"] = event["timings"]
         choices = event.get("choices")
         if isinstance(choices, list) and choices:
             finish_reason = choices[0].get("finish_reason")
@@ -221,6 +219,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--upstream-base", required=True, help="Upstream base URL, e.g. http://192.168.1.23:8081/v1")
     parser.add_argument("--log-jsonl", required=True, help="Path to append JSONL completion timing logs to.")
     parser.add_argument("--timeout-seconds", type=float, default=300.0)
+    parser.add_argument("--port-file", default=None, help="Write the actual bound port here after startup (handles fallback to an OS-assigned port).")
     return parser
 
 
@@ -231,7 +230,14 @@ def main() -> int:
     log_path.parent.mkdir(parents=True, exist_ok=True)
     log_path.touch(exist_ok=True)
 
-    server = ThreadingHTTPServer((args.listen_host, args.listen_port), ProxyHandler)
+    try:
+        server = ThreadingHTTPServer((args.listen_host, args.listen_port), ProxyHandler)
+    except OSError:
+        # Preferred port taken: let the OS hand out a free one rather than failing.
+        server = ThreadingHTTPServer((args.listen_host, 0), ProxyHandler)
+    bound_port = server.server_address[1]
+    if args.port_file:
+        Path(args.port_file).write_text(str(bound_port))
     server.upstream_base = args.upstream_base.rstrip("/") + "/"  # type: ignore[attr-defined]
     server.log_path = log_path  # type: ignore[attr-defined]
     server.timeout_seconds = args.timeout_seconds  # type: ignore[attr-defined]

@@ -42,24 +42,25 @@ def _add_llm_summary(summary: dict[str, Any], llm_entries: list[dict[str, Any]])
 
 
 def _add_phone_summary(summary: dict[str, Any], samples: list[dict]) -> None:
-    """Attach aggregate battery and thermal fields."""
+    """Attach battery/thermal deltas and peaks.
+
+    Start/end snapshots already live in preflight.json and postflight.json, so this
+    only adds what those two files can't provide: the net change over the run
+    (``_delta``) and the worst value seen mid-run (``_max``, which a start/end
+    snapshot pair can miss).
+    """
     if not samples:
         return
     first, last = samples[0], samples[-1]
     first_battery, last_battery = first["battery"], last["battery"]
-    summary["battery_level_start_pct"] = first_battery.get("level_pct")
-    summary["battery_level_end_pct"] = last_battery.get("level_pct")
     if first_battery.get("level_pct") is not None and last_battery.get("level_pct") is not None:
         summary["battery_level_delta_pct"] = last_battery["level_pct"] - first_battery["level_pct"]
-    summary["charge_counter_start_uah"] = first_battery.get("charge_counter_uah")
-    summary["charge_counter_end_uah"] = last_battery.get("charge_counter_uah")
     if first_battery.get("charge_counter_uah") is not None and last_battery.get("charge_counter_uah") is not None:
         summary["charge_counter_delta_uah"] = last_battery["charge_counter_uah"] - first_battery["charge_counter_uah"]
     for key in ("battery_temp_c", "vendor_phone_temp_c"):
         values = [sample["battery"].get(key) for sample in samples if sample["battery"].get(key) is not None]
         if values:
-            base = key.replace("_c", "")
-            summary[f"{base}_start_c"], summary[f"{base}_end_c"], summary[f"{base}_max_c"] = values[0], values[-1], max(values)
+            summary[f"{key.replace('_c', '')}_max_c"] = max(values)
     statuses = [sample["thermal"].get("thermal_status_code") for sample in samples if isinstance(sample["thermal"].get("thermal_status_code"), int)]
     if statuses:
         summary["thermal_status_max"] = max(statuses)
@@ -67,5 +68,4 @@ def _add_phone_summary(summary: dict[str, Any], samples: list[dict]) -> None:
         values = [sample["thermal"]["hal_temperatures_c"].get(sensor, {}).get("value_c") for sample in samples]
         values = [value for value in values if value is not None]
         if values:
-            name = sensor.lower()
-            summary[f"{name}_temp_start_c"], summary[f"{name}_temp_end_c"], summary[f"{name}_temp_max_c"] = values[0], values[-1], max(values)
+            summary[f"{sensor.lower()}_temp_max_c"] = max(values)

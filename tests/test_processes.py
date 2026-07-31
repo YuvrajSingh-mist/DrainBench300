@@ -31,7 +31,6 @@ class _StubUpstreamHandler(BaseHTTPRequestHandler):
                 "model": "stub-model",
                 "choices": [{"finish_reason": "stop"}],
                 "usage": {"prompt_tokens": 5, "completion_tokens": 2, "total_tokens": 7},
-                "timings": {"prompt_ms": 1.5, "predicted_ms": 2.5},
             }
         ).encode()
         self.send_response(200)
@@ -57,7 +56,7 @@ def _wait_until_port_open(port: int, timeout: float = 5.0) -> None:
 
 
 def test_start_llm_proxy_forwards_and_logs_a_real_completion(tmp_path: Path) -> None:
-    """The real openai_proxy_logger.py subprocess forwards a real HTTP request and logs real usage/timings."""
+    """The real openai_proxy_logger.py subprocess forwards a real HTTP request and logs real usage."""
     upstream = ThreadingHTTPServer(("127.0.0.1", 0), _StubUpstreamHandler)
     upstream_port = upstream.server_address[1]
     upstream_thread = threading.Thread(target=upstream.serve_forever, daemon=True)

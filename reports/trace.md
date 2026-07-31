@@ -28,9 +28,6 @@ Trace:
 Metrics:
 
 - total tokens: `3933`
-- TTFT: `6861.054 ms`
-- prefill: `531.5509832745814 tok/s`
-- decode: `29.61957999228441 tok/s`
 - elapsed: `44.69476554193153 s`
 
 ## 2) Search "weather tomorrow" and open the first result
@@ -52,9 +49,6 @@ Metrics:
 
 - request count: `3`
 - total tokens: `20472`
-- TTFT: `6896.104 ms`
-- prefill: `309.6359375989056 tok/s`
-- decode: `26.8256568259733 tok/s`
 - elapsed: `112.75527962506749 s`
 
 ## 3) Compare the top 3 results for benefits of walking daily
@@ -76,9 +70,6 @@ Metrics:
 
 - request count: `5`
 - total tokens: `41091`
-- TTFT: `17860.6 ms`
-- prefill: `280.3410235352788 tok/s`
-- decode: `24.438911781317294 tok/s`
 - elapsed: `217.32312454108614 s`
 
 ## Whole-run metric aggregation
@@ -88,11 +79,6 @@ The harness logs one completion entry per agent turn, then aggregates across the
 - `llm_total_tokens_sum`: sum of all `usage.total_tokens`
 - `llm_prompt_tokens_sum`: sum of all prompt tokens
 - `llm_completion_tokens_sum`: sum of all completion tokens
-- `llm_ttft_ms`: first completion's `prompt_ms`
-- `llm_prefill_tokens_per_second`: total prompt tokens / total prompt time
-- `llm_decode_tokens_per_second`: total completion tokens / total decode time
 - `elapsed_seconds`: full wall-clock task time, including device-control overhead
 
 So the summary is whole-task aggregate data, not just the last model call.
-- LLM token/s fields are model-side only
-- these are related but not the same thing

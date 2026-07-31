@@ -30,7 +30,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run one benchmarked mobilerun task with device and LLM metrics.")
     parser.add_argument("--serial", default=os.environ.get("DAILYBENCH_SERIAL"))
     parser.add_argument("--label", required=True)
-    parser.add_argument("--sample-interval", type=float, default=1.0)
+    parser.add_argument("--sample-interval", type=float, default=0.1, help="Seconds between battery/thermal samples (0.1 = every 100ms).")
     parser.add_argument("--screen-bit-rate", default="8M")
     parser.add_argument("--screen-size", default=None)
     parser.add_argument("--no-screen-record", action="store_true")

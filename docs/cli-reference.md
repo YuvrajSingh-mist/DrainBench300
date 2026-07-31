@@ -8,7 +8,7 @@ Full flag tables for the two harness entry points. See [README.md](../README.md)
 |---|---|---|
 | `--serial` | `$DAILYBENCH_SERIAL` | ADB serial (USB device ID or `ip:port` for wireless) |
 | `--label` | *(required)* | Run label; used directly as the run folder name (e.g. `easy-gmail-001`) |
-| `--sample-interval` | `1.0` | Seconds between battery/thermal samples |
+| `--sample-interval` | `0.1` | Seconds between battery/thermal samples (0.1s = every 100ms) |
 | `--screen-bit-rate` | `8M` | `scrcpy` recording bit rate |
 | `--screen-size` | *(none)* | `scrcpy` `--max-size` cap, if set |
 | `--no-screen-record` | off | Skip `scrcpy` screen recording entirely |
@@ -48,7 +48,7 @@ Full flag tables for the two harness entry points. See [README.md](../README.md)
 | `--dry-run` | off | Print the exact commands that would run, without executing them |
 | `--skip-unresolved` | off | Skip (rather than error on) tasks whose placeholders have no `--var` value |
 | `--serial` | `$DAILYBENCH_SERIAL` | ADB serial, forwarded to every task run |
-| `--sample-interval` | `1.0` | Forwarded to each task run |
+| `--sample-interval` | `0.1` | Forwarded to each task run |
 | `--llm-upstream-base` | `$LLM_UPSTREAM` | Forwarded to each task run |
 | `--llm-proxy-port-base` | `8090` | First proxy port; each task/repeat invocation gets `base + running index` |
 | `--model` | `$MODEL` | Model name, forwarded as `dailybench_runner.py --model` |
@@ -75,7 +75,7 @@ After each task finishes, the harness force-stops whatever app ended up in the f
 
 ### Repeats caveat
 
-`--repeats` re-runs the identical task back-to-back against a live, stateful mailbox/app. It's fully valid for hardware/LLM-performance metrics (decode tok/s, thermals, battery), but for destructive or state-toggling tasks (delete, archive, mark read/unread, send/reply), reps after the first face a different starting state than rep 1 — treat repeat-based success rates on those tasks with caution.
+`--repeats` re-runs the identical task back-to-back against a live, stateful mailbox/app. It's fully valid for hardware metrics (thermals, battery), but for destructive or state-toggling tasks (delete, archive, mark read/unread, send/reply), reps after the first face a different starting state than rep 1 — treat repeat-based success rates on those tasks with caution.
 
 ### Step-budget policy
 
