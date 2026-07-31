@@ -102,6 +102,17 @@ GROUP BY p.name;
 
 The main tables are `traces`, `spans`, `projects`, and `span_annotations`. See [docs/advanced-features.md](docs/advanced-features.md) for more tracing configuration.
 
+## MobileWorld-style batch metrics
+
+After a batch, aggregate the run folders into the [MobileWorld](https://arxiv.org/abs/2512.19432) metrics (arXiv:2512.19432) — Success Rate (overall + per bucket + interaction/GUI-only split), Average Completion Steps, Average User Queries, and User Interaction Quality (UIQ) — excluding the MCP metric:
+
+```bash
+uv run scripts/dailybench_report.py --runs runs/2026-08-01-001234   # default scans runs/*/*
+uv run scripts/dailybench_report.py --model qwen/qwen3.6-plus       # filter by model
+```
+
+This writes `report.json` + `report.md` in the current directory. Interaction (ASK USER) tasks are identified via `benchmarks/dailyBench-600/ask_user_facts.json`; each run's `meta.json` records its `task_id` (batch runner passes `--task-id`), and `run_metrics.json` records `ask_user_call_count`. See [docs/leaderboard-format.md](docs/leaderboard-format.md).
+
 ## Quick start
 
 ```bash

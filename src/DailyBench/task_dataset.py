@@ -201,6 +201,7 @@ def parse_tasks_markdown(markdown_text: str, *, source_path: str) -> dict[str, A
                 "ahi": ahi,
                 "note": note,
                 "ask_user_fact": None,
+                "is_ask_user": ahi == "ASK USER",
                 "task_number_within_app": task_index,
                 "task_number_within_dataset_app": ordinal,
                 "prompt_text": task_body,

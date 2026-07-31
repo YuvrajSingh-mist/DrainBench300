@@ -30,6 +30,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run one benchmarked mobilerun task with device and LLM metrics.")
     parser.add_argument("--serial", default=os.environ.get("DAILYBENCH_SERIAL"))
     parser.add_argument("--label", required=True)
+    parser.add_argument("--task-id", default=None, help="Dataset task_id this run corresponds to (recorded in meta.json for batch reporting).")
     parser.add_argument("--sample-interval", type=float, default=0.1, help="Seconds between battery/thermal samples (0.1 = every 100ms).")
     parser.add_argument("--screen-bit-rate", default="8M")
     parser.add_argument("--screen-size", default=None)
@@ -178,7 +179,7 @@ def main() -> int:
         )
     run_dir = make_run_dir("runs", args.label).resolve()
     meta = {
-        "run_id": run_dir.name, "label": args.label, "serial": args.serial, "started_at_utc": utc_now(),
+        "run_id": run_dir.name, "label": args.label, "task_id": args.task_id, "serial": args.serial, "started_at_utc": utc_now(),
         "goal": args.goal, "model": args.model, "steps": args.steps, "task_timeout_seconds": args.task_timeout, "sample_interval_seconds": args.sample_interval,
         "temperature": args.temperature, "top_p": args.top_p, "seed": args.seed,
     }
@@ -222,6 +223,7 @@ def main() -> int:
     write_text(run_dir / "output.txt", outcome.reason)
     write_json(run_dir / "output.json", outcome.model_dump())
     summary = summarize(sampler.samples, meta, llm_entries)
+    summary["ask_user_call_count"] = len(read_jsonl(run_dir / "ask_user_metrics.jsonl", 0))
     write_json(run_dir / "run_metrics.json", summary)
     print(f"Run directory: {run_dir}")
     print((run_dir / "run_metrics.json").read_text())

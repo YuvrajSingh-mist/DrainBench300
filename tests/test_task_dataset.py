@@ -175,11 +175,13 @@ def test_parse_tasks_markdown_handles_the_3day_sample_format() -> None:
     assert deterministic["day"] is None
     assert deterministic["apps"] == ["Google Maps", "Telegram"]
     assert deterministic["ahi"] == "DETERMINISTIC"
+    assert deterministic["is_ask_user"] is False
     assert deterministic["note"] is None
     assert deterministic["prompt_text"] == "Check Maps for the nearest pharmacy and text [contact] the winner via Telegram"
 
     ask_user = next(t for t in dataset["tasks"] if t["task_id"] == "hard__gmail-contacts__002")
     assert ask_user["ahi"] == "ASK USER"
+    assert ask_user["is_ask_user"] is True
     assert ask_user["apps"] == ["Gmail", "Contacts"]
     assert ask_user["prompt_text"] == "Could you just forward that report over?"
     assert ask_user["note"] == "deliberately no file identified as 'the report' and no manager contact saved - agent must ask which report and who the manager actually is"

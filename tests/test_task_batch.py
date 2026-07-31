@@ -35,6 +35,16 @@ def test_build_run_command_contains_selection_config(tmp_path) -> None:
     assert "--out-dir" not in command
 
 
+def test_build_run_command_records_task_id_when_present(tmp_path) -> None:
+    """The per-task command forwards the dataset task_id so the run's meta.json can
+    be joined back to the dataset for MobileWorld-style reporting."""
+    parser = task_batch.build_parser()
+    args = parser.parse_args(["--all", "--model", "m", "--serial", "S", "--llm-upstream-base", "http://x"])
+    task = {"task_id": "hard__gmail-contacts__002", "bucket": "hard", "app_slug": "gmail-contacts", "task_number_within_app": 2, "placeholders": [], "day": None, "ahi": "ASK USER", "ask_user_fact": "the report"}
+    command, _ = task_batch.build_run_command(args, task, "Forward the report", 8090)
+    assert command[command.index("--task-id") + 1] == "hard__gmail-contacts__002"
+
+
 def test_parse_vars_and_skip_unresolved() -> None:
     """parse_vars turns `key=value` CLI args into a plain dict of placeholder substitutions."""
     assert task_batch.parse_vars(["sender=alice", "contact=bob"]) == {"sender": "alice", "contact": "bob"}

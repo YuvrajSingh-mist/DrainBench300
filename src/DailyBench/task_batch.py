@@ -160,6 +160,8 @@ def build_run_command(
         "--temperature", str(args.temperature),
         "--steps", str(args.steps),
     ]
+    if task.get("task_id"):
+        command.extend(["--task-id", task["task_id"]])
     timeout = task_timeout_seconds(task)
     if timeout is not None:
         command.extend(["--task-timeout", str(timeout)])
