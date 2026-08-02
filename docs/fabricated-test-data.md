@@ -128,11 +128,19 @@ and are answered only if the agent asks:
 | Task | Withheld fact |
 |---|---|
 | Wedding Plans group | Which family contacts to add; the planning-meeting time (Sat 6 PM) |
-| Dentist appointment | Appointment date/time (Aug 5, 9:30 AM) and clinic |
+| Dentist appointment | Appointment date/time (Aug 5, 9:30 AM) |
 | Trip 2026 group | The group name; which contacts to add; which photos |
 | Maa's birthday | The birthday date (March 12) |
 | Dinner address | The address (42 MG Road, Bhubaneswar); that no prior group thread exists |
 | Client quote | The client's email address; that the quote is `quote.xlsx` in Downloads |
+
+> **Fact verification (2026-08-03):** these facts were cross-checked against the sim user's
+> actual answers recovered from the Phoenix hard-batch traces (`fullhard-20260801*`,
+> `task3-20260801`, `askuser-20260801`). Dentist = "Your dentist appointment is on 2026-08-05
+> at 9:30 AM" (no clinic name); Maa = "Maa's birthday is March 12th"; Dinner address = "42 MG
+> Road, Bhubaneswar"; Quote = "quote.xlsx ... saved in Downloads ... total the Cost column".
+> The Wedding Plans and Trip 2026 tasks never ran/never called ask_user, so their facts are
+> reconstructed from this document + the ask_user_facts mapping only.
 
 ---
 
@@ -229,6 +237,11 @@ Harness behavior that affects results and is part of the reproducible spec:
 
 ## 8. Revision history (prompt-input / data changes affecting reproducibility)
 
+- **2026-08-03 — Public ASK USER facts verified against Phoenix traces.** Recovered the sim
+  user's actual answers from the hard-batch traces and corrected the dentist fact (the clinic
+  name was NOT in the real fact — now just "2026-08-05 at 9:30 AM"). Maa's birthday, dinner
+  address, and quote-file facts confirmed exact; Wedding Plans and Trip 2026 are docs-only
+  (those tasks never ran/never asked).
 - **2026-08-03 — Hard tasks redistributed across the 3 days in `public.md`.** Each day now
   contains a mix of DETERMINISTIC and ASK USER hard tasks (Day 1: 2+2, Day 2: 2+2, Day 3: 1+2).
   The global 1–11 numbering is preserved, so task_ids (and the `ask_user_fact` lookups keyed on
