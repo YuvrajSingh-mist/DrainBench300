@@ -104,7 +104,10 @@ of fictional family members, friends, and vendors:
     (spread across the 2-week window)
   - Pushed to `/sdcard/DCIM/Camera/`, indexed via the media scanner, and verified
     present in the Photos library with correct capture dates
-- **3 invoice screenshots** (favorited) for the "Invoices album" task.
+- **Invoice screenshots: NOT seeded (known gap).** The "Invoices album" task targets
+  invoice screenshots, but none exist on the device (Screenshots contains only a Jul 13
+  screenshot plus screen-record videos). The agent's output for that task is a documented
+  quality failure — not fabricated data.
 - **Pre-existing 2024-era photos** used by the lock-screen collage task (sunset /
   beach / portrait subjects already present on the device).
 - Pre-existing WhatsApp images (late July) already on the device.
@@ -133,12 +136,64 @@ and are answered only if the agent asks:
 
 ---
 
-## 5. Run-time task variables
+## 5. Run-time task variables (inputs to the prompts)
 
-Tasks use placeholders that are filled at launch with persona values, e.g.
-`sender=Myntra`, `contact=Yuvraj`, `place=<airport>`, `middle initial=<initials>`,
-`email-id=<fabricated throwaway>`, `artist=<artist name>`. These are benchmark
-parameters, not real-world data.
+Every `[placeholder]` in `public.md` is filled at launch with a persona value via repeated
+`--var key=value` flags. These are the exact values used for the public runs (also recorded
+in `benchmarks/dailyBench-600/public_vars.local.env`, gitignored):
+
+| Var | Value | Notes |
+|---|---|---|
+| `sender` | `Myntra` | Real: most recent Gmail inbox sender (Myntra promo email) |
+| `place` | `Bhubaneswar Airport` | Real, well-known destination near the device |
+| `contact` | `Yuvraj Singh` | Fictional persona contact. Messaging policy: only Yuvraj Singh Jio / Yuvraj Airtel / Maa / Dad may be messaged |
+| `middle initial` | `Kumar Sahoo` | **Not real data** — a write-instruction value the task tells the agent to add to a contact |
+| `email-id` | `hafari4025@aghism.com` | Fabricated throwaway address; self-referencing, safe send target |
+| `artist` | `The Weeknd` | Real: "Blinding Lights" already in YouTube Music's Recently Played |
+
+These are benchmark parameters, not real-world data.
+
+### Per-task prompt override (scoped)
+
+- `easy__contacts__001` (rename a contact to include a middle initial) targets a **different
+  real contact present on the device: Akash Kumar** (a genuine contact with a phone number),
+  NOT the persona contact. This is implemented as a per-task override in the generated dataset
+  (`benchmarks/dailyBench-600/DailyBench_public_v2.json` + `.jsonl`, both gitignored): the
+  prompt hardcodes "change Akash Kumar's name to include their middle initial", and only the
+  `middle initial` placeholder remains (`Kumar Sahoo`). The change is **scoped to this task**
+  so the shared `contact` var used by messaging tasks is unaffected. ⚠️ Because it lives in a
+  generated, gitignored file, it must be **re-applied if the dataset is regenerated** from
+  `public.md`.
+
+### Run configuration (what a reproducible run looks like)
+
+Public runs are launched as a full 50-task batch (`--all`) with the following inputs, which
+must be recorded alongside any results:
+
+```bash
+.venv/bin/python dailybench_tasks.py \
+  --dataset benchmarks/dailyBench-600/DailyBench_public_v2.json \
+  --all --serial <serial> \
+  --llm-upstream-base https://openrouter.ai/api \
+  --model qwen/qwen3.6-plus --temperature 0.0 --steps 200 \
+  --save-trajectory action \
+  --tracing --phoenix-url http://localhost:6006 --phoenix-project fullpublic-20260802 \
+  --var "sender=Myntra" --var "place=Bhubaneswar Airport" \
+  --var "contact=Yuvraj Singh" --var "middle initial=Kumar Sahoo" \
+  --var "email-id=hafari4025@aghism.com" --var "artist=The Weeknd"
+```
+
+Harness behavior that affects results and is part of the reproducible spec:
+- **Step budget only** — every wall-clock timeout is `None` (`--task-timeout 0` for every
+  bucket); `--steps 200` is the only cap.
+- **`success=true` only when the deliverable is actually completed** — a "not found / couldn't
+  do it" outcome now returns `false` for action tasks (genuine check/report tasks keep the
+  zero-answer exception).
+- **Screen recording off by default** (`--screen-record` opt-in); sampling interval `1.0s`.
+- **Close-app / floating-window (PiP) rule** in the agent prompt — the agent must stop media
+  and dismiss any floating window before finishing.
+- **Per-app battery tracking** (`app_battery` in `run_metrics.json`) and **simulated-user
+  token tracking** (ask_user LLM spans in Phoenix) are recorded per run.
 
 ---
 
@@ -170,6 +225,25 @@ parameters, not real-world data.
 - All personas (family, friends, vendors, senders) are **fictional**.
 - The benchmark is designed so that no real-world identity or account is
   reachable from the released tasks.
+
+---
+
+## 8. Revision history (prompt-input / data changes affecting reproducibility)
+
+- **2026-08-03 — §5 rewritten.** Documented the exact `--var` values used at launch
+  (`sender=Myntra`, `place=Bhubaneswar Airport`, `contact=Yuvraj Singh`, `middle
+  initial=Kumar Sahoo`, `email-id=hafari4025@aghism.com`, `artist=The Weeknd`).
+- **2026-08-03 — Per-task override for `easy__contacts__001`.** Rename target changed
+  from the persona contact to **Akash Kumar** (a real contact present on the device),
+  scoped to that task only, with `middle initial=Kumar Sahoo` kept as the
+  write-instruction value. Lives in the generated, gitignored dataset — must be re-applied
+  if regenerated from `public.md`.
+- **2026-08-03 — Harness behavior hardened (recorded for reproducibility).** All
+  wall-clock timeouts removed (step budget only); `success=true` only when the deliverable
+  is completed; screen-recording off by default (1s sampling); close-app/floating-window
+  rule added to the agent prompt; per-app battery + simulated-user token tracking added.
+- **2026-08-03 — §3.7 corrected.** The "Invoices album" task's invoice screenshots were
+  **not** seeded (known gap) — corrected from "3 invoice screenshots (favorited)".
 
 ---
 
