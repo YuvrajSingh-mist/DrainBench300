@@ -34,6 +34,7 @@ Optional artifacts when enabled:
 ## Metric meanings
 
 - `elapsed_seconds`: full end-to-end wall time
+- `app_battery.consumed_mah`: per-package estimated battery use (mAh) during the run, diffed from the `app_battery_mah` snapshots in `preflight.json`/`postflight.json` (parsed from `dumpsys batterystats`)
 - `llm_prompt_tokens_sum`: total input tokens across all agent turns
 - `llm_completion_tokens_sum`: total output tokens across all agent turns
 - `llm_total_tokens_sum`: total prompt + completion tokens across the run

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from DailyBench.summary import TaskOutcome, summarize
+from DailyBench.summary import TaskOutcome, summarize, summarize_app_battery
 
 
 def test_task_outcome_round_trips_through_model_dump() -> None:
@@ -51,6 +51,21 @@ def test_summarize_combines_llm_and_phone_metrics() -> None:
     assert "battery_level_start_pct" not in summary
     assert "cpu_temp_start_c" not in summary
     assert "cpu_temp_end_c" not in summary
+
+
+def test_summarize_app_battery_diffs_pre_post_snapshots() -> None:
+    """Only positive per-app deltas above the noise floor survive, sorted by consumption."""
+    pre = {"app_battery_mah": {"com.google.android.youtube": 100.0, "org.telegram.messenger": 20.0}}
+    post = {"app_battery_mah": {"com.google.android.youtube": 190.0, "org.telegram.messenger": 20.4}}
+    result = summarize_app_battery(pre, post)
+    assert result["consumed_mah"] == {"com.google.android.youtube": 90.0}
+    assert result["total_mah"] == 90.0
+
+
+def test_summarize_app_battery_handles_missing_snapshots() -> None:
+    """Missing app_battery_mah on either side yields empty consumption, not a crash."""
+    assert summarize_app_battery({}, {}) == {"consumed_mah": {}, "total_mah": 0.0}
+    assert summarize_app_battery({"app_battery_mah": {}}, {"app_battery_mah": {}}) == {"consumed_mah": {}, "total_mah": 0.0}
 
 
 def _base_meta() -> dict:

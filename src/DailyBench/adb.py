@@ -129,6 +129,50 @@ def capture_sample(serial: str) -> dict[str, Any]:
     }
 
 
+# "    UID u0a209: 51.9 fg: 3.70 ( ..." — per-app estimated power (mAh) in the
+# "Estimated power use (mAh):" section of `dumpsys batterystats`. u0a<id> = user-0 app id
+# (full uid is 10000 + id).
+BATTERY_STATS_UID_RE = re.compile(r"UID u0a(\d+):\s*([0-9.]+)")
+# "package:com.google.android.apps.docs uid:10209" from `pm list packages -U`.
+PM_PACKAGE_UID_RE = re.compile(r"package:(\S+)\s+uid:(\d+)")
+
+
+def capture_app_battery(serial: str) -> dict[str, float]:
+    """Return {package: estimated_mAh} for every app from `dumpsys batterystats`.
+
+    Cumulative since the last reset/boot — the harness diffs a pre/post pair to get
+    per-run per-app consumption, so no intrusive `--reset` is needed. Best-effort:
+    an empty dict when the device or parsing fails.
+    """
+    try:
+        raw = adb_shell(serial, "dumpsys batterystats")
+        packages = adb_shell(serial, "pm list packages -U")
+    except subprocess.CalledProcessError:
+        return {}
+    uid_to_pkg: dict[int, str] = {}
+    for line in packages.splitlines():
+        match = PM_PACKAGE_UID_RE.search(line)
+        if match:
+            uid_to_pkg[int(match.group(2)) % 10000] = match.group(1)
+    result: dict[str, float] = {}
+    in_estimated = False
+    for line in raw.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            in_estimated = False
+            continue
+        if stripped.startswith("Estimated power use"):
+            in_estimated = True
+            continue
+        if in_estimated:
+            match = BATTERY_STATS_UID_RE.search(stripped)
+            if match:
+                pkg = uid_to_pkg.get(int(match.group(1)))
+                if pkg:
+                    result[pkg] = float(match.group(2))
+    return result
+
+
 def get_foreground_package(serial: str) -> str | None:
     """Return the package name currently focused on-screen, or None if it can't be determined."""
     output = adb_shell(serial, "dumpsys window")

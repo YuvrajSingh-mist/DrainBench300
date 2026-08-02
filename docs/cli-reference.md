@@ -28,7 +28,7 @@ Full flag tables for the two harness entry points. See [README.md](../README.md)
 | `--phoenix-project` | *(none)* | Phoenix project name; sets the `phoenix_project_name` env var |
 | `--save-trajectory` | `none` | Local trajectory recording level: `none`, `step`, or `action` |
 | `--no-app-reset` | off | Skip the post-run fairness reset — leaves the app in whatever state the task ended in |
-| `--task-timeout` | `1000` | Wall-clock seconds before mobilerun's own `MobileAgent(timeout=...)` aborts the task |
+| `--task-timeout` | `0` | Wall-clock seconds before mobilerun's own `MobileAgent(timeout=...)` aborts the task. `0` = no wall-clock limit (the `--steps` step budget is the real bound) |
 | `--ask-user-context` | *(empty)* | The hidden ground-truth fact for this task's `ask_user` tool (Hard/`ASK USER` tasks only — the dataset's `note` field); empty means the simulated user has nothing to reveal |
 | `--ask-user-model` | `gpt-5.4-mini` | OpenAI model used to play the simulated user for `ask_user` — **OpenAI-hosted models only** (see note below) |
 | `--ask-user-base-url` | *(OpenAI's default)* | Override the OpenAI API base URL for `ask_user` (e.g. to point at a local stand-in) |

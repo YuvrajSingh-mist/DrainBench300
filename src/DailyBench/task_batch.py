@@ -19,17 +19,14 @@ from .task_dataset import app_slug, load_dataset, render_prompt, select_tasks
 
 load_dotenv()  # picks up .env from the repo root (or any parent dir) - see README's Setup section
 
-# Medium/hard tasks are real multi-step tasks that routinely need more than
-# mobilerun's own 1000s MobileAgent default (see reports/qwen35-4b-public-wired-run-analysis.md
-# Easy tasks get a 10-minute leash (they're 1-step by design - if "star the latest email"
-# takes more than 10 minutes, something is genuinely broken and the phone is better off freed
-# up for the next task). Medium tasks (1-2 apps, some with file/drive steps) get 20 minutes.
-EASY_TASK_TIMEOUT_SECONDS = 600
-MEDIUM_TASK_TIMEOUT_SECONDS = 1200
-# Hard tasks get NO wall-clock cap (timeout=None): the step budget (--steps) is the real bound,
-# and on a real phone the battery is the ultimate failsafe anyway. The batch passes
-# --task-timeout 0 for hard, which dailybench_runner translates to timeout=None (the runner's
-# own 1000s default would otherwise cap hard tasks - smoke-test finding).
+# No wall-clock timeouts at all (timeout=None for every bucket): the step budget (--steps,
+# default 200) is the real bound, and on a real phone the battery is the ultimate failsafe
+# anyway. Wall-clock caps proved counterproductive - legitimately long runs (medium-clock,
+# medium-photos, medium-search-telegram) exceeded 20 minutes and were killed mid-verification.
+# The batch passes --task-timeout 0 for every bucket, which dailybench_runner translates to
+# timeout=None (the runner's own 1000s default would otherwise cap all tasks - smoke-test finding).
+EASY_TASK_TIMEOUT_SECONDS = None
+MEDIUM_TASK_TIMEOUT_SECONDS = None
 HARD_TASK_TIMEOUT_SECONDS = None
 
 # A task that fails almost immediately with a dropped-request/empty-completion error is a
@@ -116,10 +113,8 @@ def run_label(task: dict[str, object], repeat_index: int = 1, repeats_total: int
 def task_timeout_seconds(task: dict[str, object]) -> int | None:
     """Return the task timeout for one task based on its bucket tier.
 
-    Easy (1-step): 10 minutes - if a single action takes longer, it's stuck.
-    Medium (1-2 apps, some with file/drive steps): 20 minutes.
-    Hard (3-5 cross-app steps): None (no wall-clock cap) - the step budget (--steps)
-    is the real bound, and on a real phone the battery is the ultimate failsafe anyway.
+    Every tier is None (no wall-clock cap) - the step budget (--steps, default 200)
+    is the real bound, and on a real phone the battery is the ultimate failsafe.
     """
     bucket = task["bucket"]
     if bucket == "easy":

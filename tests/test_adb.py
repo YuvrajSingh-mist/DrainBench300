@@ -47,6 +47,36 @@ Current cooling devices from HAL:
     assert parsed["hal_temperatures_c"]["BATTERY"]["status_code"] == 0
 
 
+def test_capture_app_battery_maps_uids_to_packages(monkeypatch) -> None:
+    """capture_app_battery maps `UID u0a<id>` batterystats entries to packages via `pm list packages -U`."""
+    batterystats = """
+  Estimated power use (mAh):
+    Capacity: 3780, Computed drain: 3074, actual drain: 3062-3100
+    Global
+      screen: 2537 apps: 2537 duration: 6h 38m 45s
+    UID u0a122: 1111 fg: 207 ( screen=891 cpu=97.0 )
+    UID u0a150: 690 fg: 4.12 ( screen=681 cpu=8.94 )
+    UID u0a209: 51.9 fg: 3.70 ( screen=46.1 cpu=5.21 )
+    UID 1000: 443 ( cpu=435 )
+    UID 0: 314 ( cpu=313 )
+""".strip()
+    packages = "\n".join([
+        "package:com.google.android.apps.docs uid:10209",
+        "package:com.google.android.apps.photos uid:10195",
+        "package:org.telegram.messenger uid:10398",
+        "package:com.android.systemui uid:1000",
+    ])
+    monkeypatch.setattr(adb, "adb_shell", lambda serial, command: batterystats if "batterystats" in command else packages)
+    result = adb.capture_app_battery("device-1")
+    assert result == {"com.google.android.apps.docs": 51.9}
+
+
+def test_capture_app_battery_returns_empty_on_adb_failure(monkeypatch) -> None:
+    """A failing adb call yields an empty dict instead of raising (best-effort metric)."""
+    monkeypatch.setattr(adb, "adb_shell", lambda serial, command: (_ for _ in ()).throw(subprocess.CalledProcessError(1, "adb")))
+    assert adb.capture_app_battery("device-1") == {}
+
+
 def test_adb_cmd_passes_through_wired_usb_serial_verbatim() -> None:
     """A wired USB device serial (alphanumeric, no colon) is forwarded as-is to `adb -s`."""
     assert adb_cmd("R58N801XXXX", "shell", "dumpsys battery") == [

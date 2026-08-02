@@ -13,12 +13,12 @@ from dotenv import load_dotenv
 from llama_index.llms.openai_like import OpenAILike
 from mobilerun import AgentConfig, DeviceConfig, FastAgentConfig, LoggingConfig, MobileAgent, MobileConfig, TracingConfig
 
-from .adb import capture_sample, read_jsonl, reset_app_state, utc_now
+from .adb import capture_app_battery, capture_sample, read_jsonl, reset_app_state, utc_now
 from .custom_tools import CUSTOM_TOOLS, DEFAULT_ASK_USER_MODEL, build_ask_user_tool
 from .files import make_run_dir, run_dir_for_label, write_json, write_text
 from .processes import ProxyStartupError, start_llm_proxy, start_scrcpy, stop_process, wait_for_proxy_ready
 from .sampler import Sampler
-from .summary import TaskOutcome, summarize
+from .summary import TaskOutcome, summarize, summarize_app_battery
 
 load_dotenv()  # picks up .env from the repo root (or any parent dir) - see README's Setup section
 
@@ -43,7 +43,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--top-p", type=float, default=0.95)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--steps", type=int, default=200)
-    parser.add_argument("--task-timeout", type=int, default=1000, help="Wall-clock seconds before mobilerun's own MobileAgent(timeout=...) aborts the task (mobilerun's own default is 1000; medium+ tasks routinely need more - see docs/cli-reference.md).")
+    parser.add_argument("--task-timeout", type=int, default=0, help="Wall-clock seconds before mobilerun's own MobileAgent(timeout=...) aborts the task. 0 = no wall-clock limit (default): the --steps step budget is the real bound.")
     parser.add_argument("--vision", action="store_true", help="Enable vision (screenshots) for the agent; off by default for this harness.")
     parser.add_argument("--reasoning", action="store_true", help="Use mobilerun's manager/executor planning workflow instead of the fast-agent loop.")
     parser.add_argument("--no-debug", action="store_true", help="Disable mobilerun's verbose debug logging (on by default).")
@@ -194,7 +194,9 @@ def main() -> int:
         "temperature": args.temperature, "top_p": args.top_p, "seed": args.seed,
     }
     write_json(run_dir / "meta.json", meta)
-    write_json(run_dir / "preflight.json", capture_sample(args.serial))
+    preflight = capture_sample(args.serial)
+    preflight["app_battery_mah"] = capture_app_battery(args.serial)
+    write_json(run_dir / "preflight.json", preflight)
     llm_entries: list[dict] = []
     llm_proxy = None
     api_base = f"http://127.0.0.1:{args.llm_proxy_port}/v1"
@@ -223,7 +225,9 @@ def main() -> int:
         meta["llm_proxy_exit_code"] = stop_process(llm_proxy)
         llm_entries = read_jsonl(meta["llm_log_jsonl"], 0)
         write_json(run_dir / "llm_metrics.json", llm_entries)
-    write_json(run_dir / "postflight.json", capture_sample(args.serial))
+    postflight = capture_sample(args.serial)
+    postflight["app_battery_mah"] = capture_app_battery(args.serial)
+    write_json(run_dir / "postflight.json", postflight)
     app_reset_stopped_package = None
     if not args.no_app_reset:
         try:
@@ -239,6 +243,7 @@ def main() -> int:
     write_json(run_dir / "output.json", outcome.model_dump())
     summary = summarize(sampler.samples, meta, llm_entries)
     summary["ask_user_call_count"] = len(read_jsonl(run_dir / "ask_user_metrics.jsonl", 0))
+    summary["app_battery"] = summarize_app_battery(preflight, postflight)
     write_json(run_dir / "run_metrics.json", summary)
     print(f"Run directory: {run_dir}")
     print((run_dir / "run_metrics.json").read_text())

@@ -250,7 +250,7 @@ def test_main_runs_each_task_repeats_times(monkeypatch, tmp_path) -> None:
 
 
 def test_task_timeout_seconds_is_per_bucket_tier() -> None:
-    """Easy gets 300s (5 min), medium gets 1000s, hard gets 1800s (30 min)."""
+    """Every bucket tier maps to None — no wall-clock cap (the step budget is the real bound)."""
     assert task_batch.task_timeout_seconds({"bucket": "easy"}) == task_batch.EASY_TASK_TIMEOUT_SECONDS
     assert task_batch.task_timeout_seconds({"bucket": "medium"}) == task_batch.MEDIUM_TASK_TIMEOUT_SECONDS
     assert task_batch.task_timeout_seconds({"bucket": "hard"}) == task_batch.HARD_TASK_TIMEOUT_SECONDS
@@ -259,7 +259,7 @@ def test_task_timeout_seconds_is_per_bucket_tier() -> None:
 
 
 def test_build_run_command_always_adds_task_timeout_flag() -> None:
-    """--task-timeout is always added to the child command (every bucket gets an explicit timeout now)."""
+    """--task-timeout is always added to the child command (every bucket passes 0 = no wall-clock cap)."""
     parser = task_batch.build_parser()
     args = parser.parse_args(
         ["--serial", "device-1", "--llm-upstream-base", "http://mini2:8081/v1", "--model", "m"]
@@ -269,8 +269,9 @@ def test_build_run_command_always_adds_task_timeout_flag() -> None:
     easy_command, _ = task_batch.build_run_command(args, easy_task, "Check inbox", 8090)
     medium_command, _ = task_batch.build_run_command(args, medium_task, "Check inbox", 8090)
     assert "--task-timeout" in easy_command
-    assert easy_command[easy_command.index("--task-timeout") + 1] == str(task_batch.EASY_TASK_TIMEOUT_SECONDS)
-    assert medium_command[medium_command.index("--task-timeout") + 1] == str(task_batch.MEDIUM_TASK_TIMEOUT_SECONDS)
+    # Every bucket now has NO wall-clock cap: the batch passes --task-timeout 0 (= timeout=None).
+    assert easy_command[easy_command.index("--task-timeout") + 1] == "0"
+    assert medium_command[medium_command.index("--task-timeout") + 1] == "0"
 
 
 def test_load_ask_user_facts_returns_empty_dict_for_missing_file(tmp_path) -> None:

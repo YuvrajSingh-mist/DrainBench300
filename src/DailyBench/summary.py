@@ -69,3 +69,22 @@ def _add_phone_summary(summary: dict[str, Any], samples: list[dict]) -> None:
         values = [value for value in values if value is not None]
         if values:
             summary[f"{sensor.lower()}_temp_max_c"] = max(values)
+
+
+def summarize_app_battery(preflight: dict[str, Any], postflight: dict[str, Any]) -> dict[str, Any]:
+    """Diff per-app estimated battery use (mAh) between a pre/post snapshot pair.
+
+    Returns {"consumed_mah": {package: mAh} sorted by consumption, "total_mah": sum}.
+    Only positive deltas above the noise floor are kept.
+    """
+    pre = preflight.get("app_battery_mah") or {}
+    post = postflight.get("app_battery_mah") or {}
+    if not pre or not post:
+        return {"consumed_mah": {}, "total_mah": 0.0}
+    deltas: dict[str, float] = {}
+    for pkg, post_mah in post.items():
+        delta = post_mah - pre.get(pkg, 0.0)
+        if delta > 0.5:  # ignore sub-0.5mAh rounding noise
+            deltas[pkg] = round(delta, 2)
+    consumed = dict(sorted(deltas.items(), key=lambda item: item[1], reverse=True))
+    return {"consumed_mah": consumed, "total_mah": round(sum(consumed.values()), 2)}
