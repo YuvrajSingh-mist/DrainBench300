@@ -31,10 +31,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--serial", default=os.environ.get("DAILYBENCH_SERIAL"))
     parser.add_argument("--label", required=True)
     parser.add_argument("--task-id", default=None, help="Dataset task_id this run corresponds to (recorded in meta.json for batch reporting).")
-    parser.add_argument("--sample-interval", type=float, default=0.1, help="Seconds between battery/thermal samples (0.1 = every 100ms).")
+    parser.add_argument("--sample-interval", type=float, default=1.0, help="Seconds between battery/thermal samples (1.0 = every second; 0.1 = every 100ms, heavier).")
     parser.add_argument("--screen-bit-rate", default="8M")
     parser.add_argument("--screen-size", default=None)
-    parser.add_argument("--no-screen-record", action="store_true")
+    parser.add_argument("--screen-record", action="store_true", help="Record screen.mp4 via scrcpy (OFF by default — saves significant disk/CPU; a single task can produce 10-70MB of mp4).")
     parser.add_argument("--llm-upstream-base", default=None)
     parser.add_argument("--llm-proxy-port", type=int, default=8090)
     parser.add_argument("--goal", required=True, help="The task prompt/instruction for the agent.")
@@ -209,7 +209,7 @@ def main() -> int:
         api_base = f"http://127.0.0.1:{port}/v1"
         meta.update({"llm_proxy_port": port, "llm_proxy_base": api_base, "llm_proxy_upstream_base": args.llm_upstream_base, "llm_log_jsonl": str(llm_log)})
         write_json(run_dir / "meta.json", meta)
-    recording = None if args.no_screen_record else start_scrcpy(args.serial, run_dir, args.screen_bit_rate, args.screen_size)
+    recording = start_scrcpy(args.serial, run_dir, args.screen_bit_rate, args.screen_size) if args.screen_record else None
     sampler = Sampler(args.serial, args.sample_interval, run_dir / "samples.ndjson")
     sampler.start()
     start_monotonic = time.monotonic()

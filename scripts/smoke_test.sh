@@ -500,7 +500,6 @@ if [[ "$RUN_AGENT_SMOKE" -eq 1 ]]; then
       --serial "$agent_serial" \
       --label smoke-test \
       --out-dir runs/smoke-test \
-      --no-screen-record \
       --llm-upstream-base "$LLM_URL" \
       --llm-proxy-port "$SMOKE_PROXY_PORT" \
       --model "$MODEL" \

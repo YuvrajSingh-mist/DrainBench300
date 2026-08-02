@@ -21,7 +21,6 @@ def test_build_run_command_contains_selection_config(tmp_path) -> None:
             "--serial", "device-1",
             "--llm-upstream-base", "http://mini2:8081/v1",
             "--model", "demo-model",
-            "--no-screen-record",
         ]
     )
     task = {"bucket": "easy", "app_slug": "gmail", "task_number_within_app": 1, "day": 1}

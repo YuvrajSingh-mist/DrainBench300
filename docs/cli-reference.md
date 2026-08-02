@@ -8,10 +8,10 @@ Full flag tables for the two harness entry points. See [README.md](../README.md)
 |---|---|---|
 | `--serial` | `$DAILYBENCH_SERIAL` | ADB serial (USB device ID or `ip:port` for wireless) |
 | `--label` | *(required)* | Run label; used directly as the run folder name (e.g. `easy-gmail-001`) |
-| `--sample-interval` | `0.1` | Seconds between battery/thermal samples (0.1s = every 100ms) |
+| `--sample-interval` | `1.0` | Seconds between battery/thermal samples (1.0s = every second; 0.1s = every 100ms, heavier) |
 | `--screen-bit-rate` | `8M` | `scrcpy` recording bit rate |
 | `--screen-size` | *(none)* | `scrcpy` `--max-size` cap, if set |
-| `--no-screen-record` | off | Skip `scrcpy` screen recording entirely |
+| `--screen-record` | off | Record `screen.mp4` via `scrcpy` — **off by default** (a single task can produce 10–70MB of mp4, which adds real disk/CPU load); opt in when you need video evidence |
 | `--llm-upstream-base` | *(none)* | Real model server base URL; when set, the harness starts a local logging proxy in front of it |
 | `--llm-proxy-port` | `8090` | Preferred local proxy port (falls back to a free port if taken) |
 | `--goal` | *(required)* | The task prompt/instruction for the agent |
@@ -50,14 +50,14 @@ Full flag tables for the two harness entry points. See [README.md](../README.md)
 | `--dry-run` | off | Print the exact commands that would run, without executing them |
 | `--skip-unresolved` | off | Skip (rather than error on) tasks whose placeholders have no `--var` value |
 | `--serial` | `$DAILYBENCH_SERIAL` | ADB serial, forwarded to every task run |
-| `--sample-interval` | `0.1` | Forwarded to each task run |
+| `--sample-interval` | `1.0` | Forwarded to each task run |
 | `--llm-upstream-base` | `$LLM_UPSTREAM` | Forwarded to each task run |
 | `--llm-proxy-port-base` | `8090` | First proxy port; each task/repeat invocation gets `base + running index` |
 | `--model` | `$MODEL` | Model name, forwarded as `dailybench_runner.py --model` |
 | `--temperature` | `0.0` | Sampling temperature |
 | `--steps` | `50` | Fixed step budget for every task, regardless of bucket (see [Step-budget policy](#step-budget-policy)) |
 | `--repeats` | `1` | Run each selected task this many times; opt-in since runs are already deterministic at temperature 0 (see caveat below) |
-| `--no-screen-record` | off | Skip `scrcpy` for every task in the batch |
+| `--screen-record` | off | Record `screen.mp4` for every task in the batch — **off by default** (see single-run flag for why); opt in when you need video evidence |
 | `--vision` | off | Enable vision (screenshots) for the agent; off by default for this harness |
 | `--reasoning` | off | Use mobilerun's manager/executor planning workflow instead of the fast-agent loop |
 | `--no-debug` | off | Disable mobilerun's verbose debug logging (on by default) |

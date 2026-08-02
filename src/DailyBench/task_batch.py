@@ -59,14 +59,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--skip-unresolved", action="store_true")
     parser.add_argument("--serial", default=os.environ.get("DAILYBENCH_SERIAL"))
-    parser.add_argument("--sample-interval", type=float, default=0.1, help="Seconds between battery/thermal samples, forwarded to each task run (0.1 = every 100ms).")
+    parser.add_argument("--sample-interval", type=float, default=1.0, help="Seconds between battery/thermal samples, forwarded to each task run (1.0 = every second; 0.1 = every 100ms, heavier).")
     parser.add_argument("--llm-upstream-base", default=os.environ.get("LLM_UPSTREAM"))
     parser.add_argument("--llm-proxy-port-base", type=int, default=8090)
     parser.add_argument("--model", default=os.environ.get("MODEL"))
     parser.add_argument("--temperature", type=float, default=0.0)
     parser.add_argument("--steps", type=int, default=200)
     parser.add_argument("--repeats", type=int, default=1, help="Run each selected task this many times (opt-in; runs are already deterministic at temperature=0).")
-    parser.add_argument("--no-screen-record", action="store_true")
+    parser.add_argument("--screen-record", action="store_true", help="Record screen.mp4 via scrcpy (OFF by default — saves significant disk/CPU; a single task can produce 10-70MB of mp4).")
     parser.add_argument("--vision", action="store_true", help="Enable vision (screenshots) for the agent; off by default for this harness.")
     parser.add_argument("--reasoning", action="store_true", help="Use mobilerun's manager/executor planning workflow instead of the fast-agent loop.")
     parser.add_argument("--no-debug", action="store_true", help="Disable mobilerun's verbose debug logging (on by default).")
@@ -174,8 +174,8 @@ def build_run_command(
     # to timeout=None. (Omitting the flag would fall back to the runner's own 1000s default and
     # silently cap hard tasks - smoke-test finding.)
     command.extend(["--task-timeout", "0" if timeout is None else str(timeout)])
-    if args.no_screen_record:
-        command.append("--no-screen-record")
+    if args.screen_record:
+        command.append("--screen-record")
     if args.vision:
         command.append("--vision")
     if args.reasoning:

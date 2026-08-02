@@ -136,7 +136,6 @@ def test_main_does_not_require_openrouter_key_for_local_upstream(monkeypatch) ->
             "--goal", "do something",
             "--model", "local-model",
             "--llm-upstream-base", "http://100.75.134.64:8081/v1",
-            "--no-screen-record",
         ],
     )
     monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
@@ -147,7 +146,7 @@ def test_main_does_not_require_openrouter_key_for_local_upstream(monkeypatch) ->
     parser = cli.build_parser()
     args = parser.parse_args(
         ["--serial", "device-1", "--label", "test", "--goal", "g", "--model", "m",
-         "--llm-upstream-base", "http://100.75.134.64:8081/v1", "--no-screen-record"]
+         "--llm-upstream-base", "http://100.75.134.64:8081/v1"]
     )
     # The validation in main() only fires for openrouter URLs
     assert "openrouter" not in (args.llm_upstream_base or "").lower()
