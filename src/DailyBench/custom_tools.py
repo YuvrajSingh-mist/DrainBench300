@@ -14,6 +14,7 @@ the right level of precision for these benchmark tasks.
 from __future__ import annotations
 
 import json
+import os
 import re
 import time
 from pathlib import Path
@@ -42,6 +43,100 @@ The relevant information for the task is: {relevant_information}
 You need to answer questions from the mobile GUI agent about the task above. You can ONLY answer using the relevant information given and the task goal - do not make up any information under any circumstances. If the question is not related to the task, or no relevant information is available to answer it, refuse to answer in a polite manner and say so plainly.
 
 The current real date and time is: {current_datetime}. If the question is about the date or time, answer using this real value rather than any date you might otherwise assume."""
+
+
+_ask_user_phoenix_tracer: Any = None
+
+
+def _get_ask_user_phoenix_tracer() -> Any | None:
+    """Return a lazily-built OTel tracer that exports ask_user LLM spans to Phoenix.
+
+    mobilerun's Phoenix integration only instruments LlamaIndex (the main agent's LLM).
+    The ask_user tool calls the OpenAI SDK directly (AsyncOpenAI), so without this its
+    tokens never reach Phoenix. We emit a single OpenInference LLM span per ask_user call
+    ourselves, scoped to just that call — deliberately NOT instrumenting the openai package
+    globally, which would double-count the main agent (llama_index's OpenAILike also uses
+    the openai SDK and is already captured by the LlamaIndex instrumentor). Returns None
+    when Phoenix tracing is off or the OTel/OpenInference extras aren't installed.
+    """
+    global _ask_user_phoenix_tracer
+    if _ask_user_phoenix_tracer is not None:
+        return _ask_user_phoenix_tracer
+    endpoint = os.environ.get("phoenix_url")
+    if not endpoint:
+        _ask_user_phoenix_tracer = False
+        return None
+    try:
+        from opentelemetry import trace as otel_trace
+        from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+        from opentelemetry.sdk import trace as trace_sdk
+        from opentelemetry.sdk.resources import Resource
+        from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+        from openinference.semconv.resource import ResourceAttributes
+    except ImportError:
+        _ask_user_phoenix_tracer = False
+        return None
+    resource_attributes: dict[str, object] = {}
+    project = os.environ.get("phoenix_project_name", "")
+    if project.strip():
+        resource_attributes[ResourceAttributes.PROJECT_NAME] = project
+    provider = trace_sdk.TracerProvider(resource=Resource(attributes=resource_attributes))
+    provider.add_span_processor(SimpleSpanProcessor(OTLPSpanExporter(endpoint + "/v1/traces")))
+    _ask_user_phoenix_tracer = otel_trace.get_tracer("dailybench.ask_user", tracer_provider=provider)
+    return _ask_user_phoenix_tracer
+
+
+def _annotate_ask_user_span(
+    span: Any,
+    model: str,
+    system_prompt: str,
+    question: str,
+    answer: str | None,
+    response: Any,
+) -> None:
+    """Set OpenInference LLM span attributes so Phoenix counts the simulated user's tokens."""
+    from openinference.semconv.trace import SpanAttributes
+
+    span.set_attribute(SpanAttributes.OPENINFERENCE_SPAN_KIND, "LLM")
+    span.set_attribute(SpanAttributes.LLM_PROVIDER, "openai")
+    span.set_attribute(SpanAttributes.LLM_MODEL_NAME, model)
+    span.set_attribute(SpanAttributes.LLM_INVOCATION_PARAMETERS, json.dumps({"model": model}, sort_keys=True))
+    span.set_attribute(
+        SpanAttributes.LLM_INPUT_MESSAGES,
+        json.dumps(
+            [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": question},
+            ]
+        ),
+    )
+    span.set_attribute(SpanAttributes.LLM_OUTPUT_MESSAGES, json.dumps([{"role": "assistant", "content": answer or ""}]))
+    usage = response.usage
+    if usage is not None:
+        if usage.prompt_tokens is not None:
+            span.set_attribute(SpanAttributes.LLM_TOKEN_COUNT_PROMPT, usage.prompt_tokens)
+        if usage.completion_tokens is not None:
+            span.set_attribute(SpanAttributes.LLM_TOKEN_COUNT_COMPLETION, usage.completion_tokens)
+        if usage.total_tokens is not None:
+            span.set_attribute(SpanAttributes.LLM_TOKEN_COUNT_TOTAL, usage.total_tokens)
+
+
+def _emit_ask_user_span(
+    tracer: Any,
+    model: str,
+    system_prompt: str,
+    question: str,
+    answer: str | None,
+    response: Any,
+) -> None:
+    """Best-effort: emit one OpenInference LLM span for an ask_user call. Never raises — a
+    tracing hiccup (e.g. Phoenix briefly unreachable) must not break the simulated user's answer.
+    """
+    try:
+        with tracer.start_as_current_span("ask_user.llm") as span:
+            _annotate_ask_user_span(span, model, system_prompt, question, answer, response)
+    except Exception:
+        pass
 
 
 async def get_current_datetime(*, ctx: "ActionContext") -> str:
@@ -107,6 +202,9 @@ def build_ask_user_tool(
         )
         elapsed_ms = (time.monotonic() - start) * 1000.0
         content = response.choices[0].message.content
+        tracer = _get_ask_user_phoenix_tracer()
+        if tracer is not None:
+            _emit_ask_user_span(tracer, model, system_prompt, question, content, response)
         if log_path is not None:
             _log_ask_user_call(
                 log_path,
