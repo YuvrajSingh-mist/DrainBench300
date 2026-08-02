@@ -21,16 +21,16 @@ load_dotenv()  # picks up .env from the repo root (or any parent dir) - see READ
 
 # Medium/hard tasks are real multi-step tasks that routinely need more than
 # mobilerun's own 1000s MobileAgent default (see reports/qwen35-4b-public-wired-run-analysis.md
-# Easy tasks get a short 5-minute leash (they're 1-step by design - if "star the latest email"
-# takes more than 5 minutes, something is genuinely broken and the phone is better off freed up
-# for the next task). Medium tasks (1-2 apps, some with file/drive steps) get 30 minutes.
+# section C1). Easy tasks get a short 5-minute leash (they're 1-step by design - if "star the
+# latest email" takes more than 5 minutes, something is genuinely broken and the phone is better
+# off freed up for the next task). Hard tasks get 30 minutes for cross-app multi-step work.
 EASY_TASK_TIMEOUT_SECONDS = 300
-MEDIUM_TASK_TIMEOUT_SECONDS = 1800
-# Hard tasks get effectively NO wall-clock cap: the step budget (--steps) is the real bound, and
-# on a real phone the battery is the ultimate failsafe anyway. We still pass an explicit LARGE
-# timeout (24h) rather than omitting the flag, because dailybench_runner's own --task-timeout
-# defaults to 1000s and would otherwise cap hard tasks at ~16 minutes (smoke-test finding).
-HARD_TASK_TIMEOUT_SECONDS = 86400
+MEDIUM_TASK_TIMEOUT_SECONDS = 1000
+# Hard tasks get NO special wall-clock cap: the step budget (--steps) is the real bound, and on a
+# real phone the battery is the ultimate failsafe anyway (a run that goes on too long just drains
+# the battery and the phone switches off). A 2h wall-clock valve was pointless - the battery dies
+# long before 2h - so it was removed.
+HARD_TASK_TIMEOUT_SECONDS = None
 
 # A task that fails almost immediately with a dropped-request/empty-completion error is a
 # transient LLM-infra blip, not genuine task difficulty (section C3/A4) - only flag failures
@@ -113,14 +113,13 @@ def run_label(task: dict[str, object], repeat_index: int = 1, repeats_total: int
     return label
 
 
-def task_timeout_seconds(task: dict[str, object]) -> int:
+def task_timeout_seconds(task: dict[str, object]) -> int | None:
     """Return the task timeout for one task based on its bucket tier.
 
     Easy (1-step): 5 minutes - if a single action takes longer, it's stuck.
-    Medium (1-2 apps, some with file/drive steps): 1800s (30 min) - a 2-app task like
-    Calculator+Obsidian needs more than mobilerun's own 1000s default (smoke-test finding).
-    Hard (3-5 cross-app steps): effectively uncapped (86400s) - the step budget (--steps)
-    is the real bound, and on a real phone the battery is the ultimate failsafe anyway.
+    Medium (2-3 steps): 1000s (mobilerun's own SDK default).
+    Hard (3-5 cross-app steps): no wall-clock cap - the step budget (--steps) is the
+    bound, and on a real phone the battery is the ultimate failsafe anyway.
     """
     bucket = task["bucket"]
     if bucket == "easy":
