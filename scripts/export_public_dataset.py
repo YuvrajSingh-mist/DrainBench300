@@ -23,6 +23,16 @@ def main() -> int:
     source = ROOT / source_path
     dataset = parse_tasks_markdown(source.read_text(encoding="utf-8"), source_path=source_path)
     merge_ask_user_facts(dataset, ROOT / "benchmarks/dailyBench-600/ask_user_facts.json")
+    # Per-task prompt overrides that survive regeneration (the datasets are gitignored and
+    # rebuilt from this script). easy__contacts__001 is scoped to a different real device
+    # contact (Akash Kumar) so the shared `contact` var used by messaging tasks is
+    # unaffected — see docs/fabricated-test-data.md §5.
+    for task in dataset["tasks"]:
+        if task["task_id"] == "easy__contacts__001":
+            task["prompt_text"] = "In Contacts, change Akash Kumar's name to include their middle initial: [middle initial]"
+            task["prompt_template"] = "In Contacts, change Akash Kumar's name to include their middle initial: {{ middle initial }}"
+            task["placeholders"] = ["middle initial"]
+            task["placeholder_count"] = 1
     dataset["dataset_name"] = "DailyBench-Public"
     dataset["dataset_version"] = "v2"
     save_dataset_files(dataset, ROOT / "benchmarks" / "dailyBench-600" / "DailyBench_public_v2.json", ROOT / "benchmarks" / "dailyBench-600" / "DailyBench_public_v2.jsonl")

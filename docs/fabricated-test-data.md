@@ -161,9 +161,8 @@ These are benchmark parameters, not real-world data.
   (`benchmarks/dailyBench-600/DailyBench_public_v2.json` + `.jsonl`, both gitignored): the
   prompt hardcodes "change Akash Kumar's name to include their middle initial", and only the
   `middle initial` placeholder remains (`Kumar Sahoo`). The change is **scoped to this task**
-  so the shared `contact` var used by messaging tasks is unaffected. ⚠️ Because it lives in a
-  generated, gitignored file, it must be **re-applied if the dataset is regenerated** from
-  `public.md`.
+  so the shared `contact` var used by messaging tasks is unaffected. The override is **baked
+  into `scripts/export_public_dataset.py`**, so it survives every dataset regeneration.
 
 ### Run configuration (what a reproducible run looks like)
 
@@ -230,6 +229,17 @@ Harness behavior that affects results and is part of the reproducible spec:
 
 ## 8. Revision history (prompt-input / data changes affecting reproducibility)
 
+- **2026-08-03 — Hard tasks redistributed across the 3 days in `public.md`.** Each day now
+  contains a mix of DETERMINISTIC and ASK USER hard tasks (Day 1: 2+2, Day 2: 2+2, Day 3: 1+2).
+  The global 1–11 numbering is preserved, so task_ids (and the `ask_user_fact` lookups keyed on
+  them) are unchanged. `public.md` and the generated datasets are gitignored (local-only).
+- **2026-08-03 — Public ASK USER facts restored.** `ask_user_facts.json` had been replaced with
+  tasks.md-schedule facts; the 6 public ASK USER facts were merged back in (reconstructed from
+  the documented values in §4 and the run analysis — verify against the original file if you
+  have it). File now holds 56 keys (50 tasks.md + 6 public).
+- **2026-08-03 — `easy__contacts__001` override persisted.** The Akash Kumar scoping is now
+  applied inside `scripts/export_public_dataset.py`, so it survives regeneration (previously it
+  was a manual re-edit of the gitignored dataset).
 - **2026-08-03 — §5 rewritten.** Documented the exact `--var` values used at launch
   (`sender=Myntra`, `place=Bhubaneswar Airport`, `contact=Yuvraj Singh`, `middle
   initial=Kumar Sahoo`, `email-id=hafari4025@aghism.com`, `artist=The Weeknd`).
