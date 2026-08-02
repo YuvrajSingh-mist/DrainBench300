@@ -45,6 +45,8 @@ HF_TOKEN=hf_...            # only needed for pushing dataset exports to Hugging 
 
 `.env` is gitignored and loaded automatically by both entrypoints (`dailybench_runner.py`/`dailybench_tasks.py`) via `python-dotenv` — no `export`, no `--env-file`, nothing else to configure. Leave any line blank if you don't need that feature yet; each one is independently optional (see the comments in `.env.example`).
 
+> **Note:** The `ask_user` simulated user (`--ask-user-model`, default `gpt-5.4-mini`) only supports **OpenAI-hosted models** — the `ask_user` tool calls the OpenAI API directly, and its per-1M-token cost table covers OpenAI models. It is a separate service from the agent's LLM (`--model`), which can be any model your LLM host (e.g. OpenRouter) serves.
+
 ## Tracing (Phoenix)
 
 [Arize Phoenix](https://github.com/Arize-ai/phoenix) captures every LLM call, tool execution, and agent step as OpenTelemetry traces — essential for debugging runs, comparing model behavior, and auditing token usage. The `mobilerun` SDK auto-instruments traces when it detects a Phoenix server running locally.

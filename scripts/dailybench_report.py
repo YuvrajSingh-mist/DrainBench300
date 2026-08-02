@@ -36,7 +36,9 @@ sys.path.insert(0, str(ROOT / "src"))
 from DailyBench.benchmark_metrics import avg_steps, avg_user_queries, success_rate, user_interaction_quality
 from DailyBench.task_batch import load_ask_user_facts
 
-DEFAULT_RUNS = "runs/*/*"
+# Matches both the older flat layout `runs/<batch>/<run-folder>` and the newer
+# per-day layout `runs/<batch>/<day>/<run-folder>` by walking for output.json.
+DEFAULT_RUNS = "runs/**"
 DEFAULT_ASK_USER_FACTS = "benchmarks/dailyBench-600/ask_user_facts.json"
 REP_SUFFIX_RE = re.compile(r"-rep\d+$")
 
@@ -78,18 +80,24 @@ def parse_task_id_from_label(label: str) -> str | None:
 
 
 def discover_run_folders(runs_arg: str | None) -> list[Path]:
-    """Return run folders (dirs containing output.json) under a path or glob."""
+    """Return run folders (dirs containing output.json) under a path or glob.
+
+    Walks for `output.json` so it works with both the flat layout
+    `runs/<batch>/<run-folder>` and the per-day layout
+    `runs/<batch>/<day>/<run-folder>`.
+    """
     if runs_arg:
         if any(char in runs_arg for char in "*?["):
-            candidates = [Path(path) for path in glob.glob(runs_arg)]
-        else:
-            path = Path(runs_arg)
-            if not path.is_dir():
-                raise SystemExit(f"--runs path not found: {runs_arg}")
-            candidates = [child for child in path.iterdir() if child.is_dir()]
-    else:
-        candidates = [Path(path) for path in glob.glob(DEFAULT_RUNS)]
-    return sorted(path for path in candidates if path.is_dir() and (path / "output.json").exists())
+            candidates = [Path(path) for path in glob.glob(runs_arg, recursive=True)]
+            return sorted(path for path in candidates if path.is_dir() and (path / "output.json").exists())
+        path = Path(runs_arg)
+        if not path.is_dir():
+            raise SystemExit(f"--runs path not found: {runs_arg}")
+        return sorted(p.parent for p in path.rglob("output.json") if p.parent.is_dir())
+    root = Path("runs")
+    if not root.is_dir():
+        return []
+    return sorted(p.parent for p in root.rglob("output.json") if p.parent.is_dir())
 
 
 def load_run_record(run_dir: Path, interaction_ids: set[str]) -> dict[str, Any]:
@@ -104,6 +112,14 @@ def load_run_record(run_dir: Path, interaction_ids: set[str]) -> dict[str, Any]:
 
     task_id = meta.get("task_id") or parse_task_id_from_label(meta.get("label", ""))
     bucket = task_id.split("__", 1)[0] if task_id else None
+    is_interaction = bool(task_id in interaction_ids) if task_id else False
+    ask_user_calls = int(ask_user_calls or 0)
+    success = bool(output.get("success"))
+    # ASK USER (interaction) tasks only count as a success if the agent actually
+    # asked the user for the missing fact. An agent that guesses instead gets 0 -
+    # mirrors MobileWorld's q_i = s_i / c_i (c_i = 0 -> q_i = 0).
+    if is_interaction and ask_user_calls == 0:
+        success = False
 
     return {
         "run_dir": str(run_dir),
@@ -111,10 +127,10 @@ def load_run_record(run_dir: Path, interaction_ids: set[str]) -> dict[str, Any]:
         "model": meta.get("model"),
         "task_id": task_id,
         "bucket": bucket,
-        "success": bool(output.get("success")),
+        "success": success,
         "steps": int(output.get("steps") or 0),
-        "ask_user_calls": int(ask_user_calls or 0),
-        "is_interaction": bool(task_id in interaction_ids) if task_id else False,
+        "ask_user_calls": ask_user_calls,
+        "is_interaction": is_interaction,
     }
 
 

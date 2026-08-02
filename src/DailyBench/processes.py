@@ -45,14 +45,23 @@ def start_scrcpy(serial: str, run_dir: Path, bit_rate: str, size: str | None) ->
     return BackgroundProcess(process=process, stdout_path=stdout_path, stderr_path=stderr_path)
 
 
-def start_llm_proxy(run_dir: Path, upstream_base: str, preferred_port: int) -> tuple[BackgroundProcess, int, Path]:
-    """Start the local OpenAI-compatible proxy/logger for one run.
+def start_llm_proxy(
+    run_dir: Path,
+    upstream_base: str,
+    preferred_port: int,
+    *,
+    retries: int = 3,
+    retry_delays: tuple[float, ...] = (5.0, 10.0, 15.0),
+    per_attempt_timeout: float = 30.0,
+) -> tuple[BackgroundProcess, int, Path]:
+    """Start the local OpenAI-compatible proxy/logger for one run, retrying startup.
 
     The proxy binds its own port (honoring ``preferred_port`` when it's free, else
     letting the OS pick one) and writes the actual bound port to a sidecar file.
-    This function waits for that file so callers always learn the real port - even
-    when the preferred port was taken - instead of racing between "pick a free port"
-    and "the subprocess binds it".
+    Startup is retried up to ``retries`` times with ``retry_delays`` between attempts so
+    a slow cold start under system load can't silently kill a task. If it still hasn't
+    become ready, a :class:`ProxyStartupError` is raised - the caller should abort the
+    run rather than proceed without an LLM endpoint.
     """
     stdout_path = run_dir / "llm_proxy.stdout.txt"
     stderr_path = run_dir / "llm_proxy.stderr.txt"
@@ -68,12 +77,33 @@ def start_llm_proxy(run_dir: Path, upstream_base: str, preferred_port: int) -> t
         "--log-jsonl", str(log_jsonl),
         "--port-file", str(port_file),
     ]
-    process = subprocess.Popen(cmd, stdout=stdout_path.open("w"), stderr=stderr_path.open("w"))
-    port = _read_proxy_port(port_file, process)
-    return BackgroundProcess(process=process, stdout_path=stdout_path, stderr_path=stderr_path), port, log_jsonl
+    last_error: Exception | None = None
+    for attempt in range(1, retries + 1):
+        port_file.unlink(missing_ok=True)
+        process = subprocess.Popen(cmd, stdout=stdout_path.open("w"), stderr=stderr_path.open("w"))
+        try:
+            port = _read_proxy_port(port_file, process, timeout=per_attempt_timeout)
+            return BackgroundProcess(process=process, stdout_path=stdout_path, stderr_path=stderr_path), port, log_jsonl
+        except (TimeoutError, RuntimeError) as exc:
+            last_error = exc
+            if process.poll() is None:
+                process.kill()
+            process.wait(timeout=5)
+            if attempt < retries:
+                delay = retry_delays[attempt - 1] if attempt - 1 < len(retry_delays) else retry_delays[-1]
+                print(f"LLM proxy attempt {attempt}/{retries} failed ({exc}); retrying in {delay}s", file=sys.stderr)
+                time.sleep(delay)
+    raise ProxyStartupError(
+        f"LLM proxy failed to start after {retries} attempts (last error: {last_error}). "
+        f"See {stderr_path}. The benchmark will not run - fix the proxy/upstream environment and retry."
+    ) from last_error
 
 
-def _read_proxy_port(port_file: Path, process: subprocess.Popen[object], timeout: float = 5.0) -> int:
+class ProxyStartupError(RuntimeError):
+    """Raised when the LLM proxy cannot be started after several retries."""
+
+
+def _read_proxy_port(port_file: Path, process: subprocess.Popen[object], timeout: float = 60.0) -> int:
     """Wait for the proxy's --port-file and return the port it actually bound.
 
     The proxy writes this right after startup, so it is authoritative even when the
@@ -93,7 +123,7 @@ def _read_proxy_port(port_file: Path, process: subprocess.Popen[object], timeout
     raise TimeoutError(f"llm proxy did not write {port_file} within {timeout}s")
 
 
-def wait_for_proxy_ready(port: int, timeout: float = 10.0) -> None:
+def wait_for_proxy_ready(port: int, timeout: float = 30.0) -> None:
     """Poll the local proxy's /healthz endpoint until it responds, or raise once the timeout elapses.
 
     A fixed sleep isn't reliable startup-readiness: under real system load (disk/CPU

@@ -1,10 +1,20 @@
 benchmarks/
+datasets/
+seeds/
+runs/
+report_wireless.json
+report_wireless.md
 __pycache__/
 *.pyc
 .pytest_cache/
 .venv/
+.venv
 .venv.nosync/
 .env
+.DS_Store
+src/*.egg-info/
+# dev scratch scripts (underscore-prefixed)
+scripts/_*.py
 
 # Reserved for the real private benchmark's ask_user facts, once tasks.md migrates to the same
 # Hard/ASK USER format public.md already uses (see docs/advanced-features.md's Custom tools

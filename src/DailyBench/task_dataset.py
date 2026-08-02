@@ -60,6 +60,7 @@ APP_ALIASES: dict[str, tuple[str, ...]] = {
     "Calendar": ("Calendar",),
     "Contacts": ("Contacts",),
     "Notes": ("Notes",),
+    "Obsidian": ("Obsidian",),
     "Files": ("Files",),
     "Camera": ("Camera",),
     "Gallery": ("Gallery",),

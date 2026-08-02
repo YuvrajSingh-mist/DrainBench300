@@ -4,7 +4,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from DailyBench.files import dated_out_dir, make_run_dir, slugify, write_json, write_text
+from DailyBench.files import dated_out_dir, make_run_dir, run_dir_for_label, slugify, write_json, write_text
+
+
+def test_run_dir_for_label_nests_day_subfolder() -> None:
+    """Batch labels (`day1--easy-gmail-001`) resolve to `<root>/day1/<run>`; plain labels stay flat."""
+    assert run_dir_for_label("runs/2026-08-02-000000", "day1--easy-gmail-001").parts[-2:] == ("day1", "easy-gmail-001")
+    assert run_dir_for_label("runs/2026-08-02-000000", "hard--hard-chrome-notes-001").parts[-2:] == ("hard", "hard-chrome-notes-001")
+    assert run_dir_for_label("runs", "search-weather").parts[-1] == "search-weather"
 
 
 def test_slugify_and_make_run_dir(tmp_path) -> None:

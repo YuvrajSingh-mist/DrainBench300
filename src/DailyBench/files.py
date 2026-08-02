@@ -29,10 +29,24 @@ def dated_out_dir(base_dir: str | Path) -> Path:
     return path / date_str
 
 
+def run_dir_for_label(run_root: str | Path, label: str) -> Path:
+    """Resolve a run label to its directory under `run_root`, nesting the day subfolder.
+
+    Batch labels (see task_batch.run_label) use the format `{sub}--{rest}` where `sub`
+    is the day/hard/open-ended subfolder (e.g. `day1`/`day2`/`hard`). This keeps each
+    day's runs grouped under `runs/<batch>/day1/`, `runs/<batch>/day2/`, etc. so a
+    batch folder contains per-day subfolders rather than a flat list of run folders.
+    A label without the `--` separator (one-off single runs) stays flat under the root.
+    """
+    sub, sep, rest = label.partition("--")
+    if sep:
+        return Path(run_root) / sub / slugify(rest)
+    return Path(run_root) / slugify(label)
+
+
 def make_run_dir(base_dir: str, label: str) -> Path:
     """Create and return a new run directory named by its label, nested under a date-time folder."""
-    run_id = slugify(label)
-    run_dir = dated_out_dir(base_dir) / run_id
+    run_dir = run_dir_for_label(dated_out_dir(base_dir), label)
     run_dir.mkdir(parents=True, exist_ok=True)
     return run_dir
 

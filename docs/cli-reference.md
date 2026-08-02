@@ -30,8 +30,10 @@ Full flag tables for the two harness entry points. See [README.md](../README.md)
 | `--no-app-reset` | off | Skip the post-run fairness reset — leaves the app in whatever state the task ended in |
 | `--task-timeout` | `1000` | Wall-clock seconds before mobilerun's own `MobileAgent(timeout=...)` aborts the task |
 | `--ask-user-context` | *(empty)* | The hidden ground-truth fact for this task's `ask_user` tool (Hard/`ASK USER` tasks only — the dataset's `note` field); empty means the simulated user has nothing to reveal |
-| `--ask-user-model` | `gpt-5.4-mini` | OpenAI model used to play the simulated user for `ask_user` |
+| `--ask-user-model` | `gpt-5.4-mini` | OpenAI model used to play the simulated user for `ask_user` — **OpenAI-hosted models only** (see note below) |
 | `--ask-user-base-url` | *(OpenAI's default)* | Override the OpenAI API base URL for `ask_user` (e.g. to point at a local stand-in) |
+
+> **Note:** The `ask_user` simulated user (`--ask-user-model`, default `gpt-5.4-mini`) only supports **OpenAI-hosted models** — the `ask_user` tool calls the OpenAI API directly, and its per-1M-token cost table covers OpenAI models. It is a separate service from the agent's LLM (`--model`), which can be any model your LLM host (e.g. OpenRouter) serves.
 
 ## `dailybench_tasks.py` — dataset-backed batch runner
 
@@ -66,7 +68,7 @@ Full flag tables for the two harness entry points. See [README.md](../README.md)
 | `--no-app-reset` | off | Skip the post-run fairness reset for every task in the batch (see below) |
 | `--cooldown-seconds` | `10.0` | Fixed pause between tasks so the device doesn't run continuously into thermal/load territory; `0` disables it |
 | `--ask-user-facts` | `benchmarks/dailyBench-600/ask_user_facts.json` | Fallback per-`task_id` facts for Hard/`ASK USER` tasks, used only when a task's own dataset row has no `ask_user_fact` (see [Custom tools](advanced-features.md#custom-tools-srcdailybenchcustom_toolspy)); missing file means no facts configured (fine for DETERMINISTIC-only selections) |
-| `--ask-user-model` | `gpt-5.4-mini` | Forwarded to every task run's `ask_user` tool |
+| `--ask-user-model` | `gpt-5.4-mini` | Forwarded to every task run's `ask_user` tool — **OpenAI-hosted models only** (see note above) |
 | `--ask-user-base-url` | *(OpenAI's default)* | Forwarded to every task run's `ask_user` tool |
 
 ### App-reset fairness

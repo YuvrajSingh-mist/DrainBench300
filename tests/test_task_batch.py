@@ -29,7 +29,7 @@ def test_build_run_command_contains_selection_config(tmp_path) -> None:
     assert command[0] == sys.executable
     assert "--llm-proxy-port" in command
     assert "8123" in command
-    assert "50" in command
+    assert "200" in command
     assert "--no-stream" not in command
     assert "Check inbox" == command[-1]
     assert "--out-dir" not in command
@@ -51,10 +51,10 @@ def test_parse_vars_and_skip_unresolved() -> None:
 
 
 def test_default_steps_is_fixed_fairness_budget() -> None:
-    """The default --steps budget is a fixed 50, so every task in a batch gets the same fairness budget."""
+    """The default --steps budget is a fixed 200, so every task in a batch gets the same fairness budget."""
     parser = task_batch.build_parser()
     args = parser.parse_args([])
-    assert args.steps == 50
+    assert args.steps == 200
 
 
 def test_default_repeats_is_one() -> None:
@@ -349,4 +349,13 @@ def test_find_run_dir_globs_for_label_match_under_runs() -> None:
     (task_batch.Path("runs") / "2026-07-30-091500" / "easy-gmail-001").mkdir(parents=True, exist_ok=True)
     found = task_batch.find_run_dir("easy-gmail-001")
     assert found == task_batch.Path("runs") / "2026-07-30-091500" / "easy-gmail-001"
+    assert task_batch.find_run_dir("no-such-label") is None
+
+
+def test_find_run_dir_nests_day_subfolder_for_batch_labels() -> None:
+    """Batch labels (day1--easy-gmail-001) resolve under runs/<date>/day1/<run>."""
+    (task_batch.Path("runs") / "2026-07-30-090000" / "day1" / "easy-gmail-001").mkdir(parents=True, exist_ok=True)
+    (task_batch.Path("runs") / "2026-07-30-091500" / "day1" / "easy-gmail-001").mkdir(parents=True, exist_ok=True)
+    found = task_batch.find_run_dir("day1--easy-gmail-001")
+    assert found == task_batch.Path("runs") / "2026-07-30-091500" / "day1" / "easy-gmail-001"
     assert task_batch.find_run_dir("no-such-label") is None

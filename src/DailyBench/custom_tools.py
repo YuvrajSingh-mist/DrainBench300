@@ -21,6 +21,8 @@ from typing import TYPE_CHECKING, Any, Dict
 
 from openai import AsyncOpenAI
 
+from .pricing import ModelPricing, get_default_pricing
+
 if TYPE_CHECKING:
     from mobilerun.agent.action_context import ActionContext
 
@@ -64,6 +66,7 @@ def build_ask_user_tool(
     api_key: str | None = None,
     base_url: str | None = None,
     log_path: Path | None = None,
+    pricing: ModelPricing | None = None,
 ) -> Dict[str, Dict[str, Any]]:
     """Build a per-run `ask_user` custom tool, closing over this task's hidden ground-truth fact.
 
@@ -72,9 +75,11 @@ def build_ask_user_tool(
     just what's asked"). `relevant_information` is that fact, supplied per run via
     `--ask-user-context` - the tool itself never invents it.
 
-    When `log_path` is set, each call appends a JSONL entry with timing, token usage, and model
-    info — same shape as the main proxy's `llm_proxy_metrics.jsonl` — so ask_user costs are
-    tracked alongside the main agent's LLM costs.
+    When `log_path` is set, each call appends a JSONL entry with timing, token usage, model info,
+    and a USD cost figure — same shape as the main proxy's `llm_proxy_metrics.jsonl` — so
+    ask_user costs are tracked alongside the main agent's LLM costs. The dollar cost is computed
+    from a provider pricing catalog at runtime (see `DailyBench.pricing`), keyed by the model
+    passed here, so it follows whichever model the user selects instead of a hardcoded rate.
 
     The client is constructed lazily, on first actual call - most tasks never call ask_user at
     all, and building it eagerly would make every single run require OPENAI_API_KEY to be set,
@@ -103,7 +108,15 @@ def build_ask_user_tool(
         elapsed_ms = (time.monotonic() - start) * 1000.0
         content = response.choices[0].message.content
         if log_path is not None:
-            _log_ask_user_call(log_path, model, question, content, response, elapsed_ms)
+            _log_ask_user_call(
+                log_path,
+                model,
+                question,
+                content,
+                response,
+                elapsed_ms,
+                pricing=pricing if pricing is not None else get_default_pricing(),
+            )
         return content.strip() if content else "Failed: empty response from the simulated user."
 
     return {
@@ -117,18 +130,56 @@ def build_ask_user_tool(
                 },
             },
             "description": (
-                "Ask the human user a clarifying question when the task is missing a load-bearing "
-                "fact you can't find anywhere on the device (e.g. which contact, which file, what "
-                "date). Use this instead of guessing or making something up. Only call it when "
-                "you're genuinely stuck, and ask one specific question at a time."
+                "Ask the human user a clarifying question when the task needs a specific fact that is "
+                "NOT available anywhere on the device (for example a particular contact's name, a date or "
+                "time, a file, or an amount etc.). First search the device thoroughly for it — only if you genuinely "
+                "cannot find or infer it should you ask. Use this INSTEAD of guessing or inventing the specific fact "
+                "you think is missing to complete the task. Never ask about things you can look up yourself. Ask "
+                "one specific question at a time."
             ),
         }
     }
 
 
-def _log_ask_user_call(log_path: Path, model: str, question: str, answer: str | None, response: Any, elapsed_ms: float) -> None:
-    """Append one ask_user completion record to a JSONL log, matching the main proxy's format."""
+def _log_ask_user_call(
+    log_path: Path,
+    model: str,
+    question: str,
+    answer: str | None,
+    response: Any,
+    elapsed_ms: float,
+    *,
+    pricing: ModelPricing | None = None,
+) -> None:
+    """Append one ask_user completion record to a JSONL log, matching the main proxy's format.
+
+    Cost is recorded in USD. The dollar figure is never hardcoded: if the provider already
+    returned ``usage.cost`` (some gateways do) that value wins; otherwise the per-1M-token rate
+    is looked up at runtime from the provider's pricing catalog keyed by ``model`` (see
+    ``DailyBench.pricing``). If the model has no published rate, ``cost`` is logged as ``None``
+    with an explanatory ``cost_details`` rather than a fabricated number.
+    """
     usage = response.usage
+    prompt_tokens = usage.prompt_tokens if usage else None
+    completion_tokens = usage.completion_tokens if usage else None
+    total_tokens = usage.total_tokens if usage else None
+
+    # Prefer a provider-returned dollar figure (e.g. OpenRouter gateways), else estimate.
+    cost = float(usage.cost) if usage is not None and getattr(usage, "cost", None) is not None else None
+    cost_details: dict[str, Any] | None = None
+    if cost is None and prompt_tokens is not None and completion_tokens is not None:
+        resolver = pricing if pricing is not None else get_default_pricing()
+        price = resolver.lookup(model)
+        if price is not None:
+            cost = resolver.estimate_cost(model, prompt_tokens, completion_tokens)
+            cost_details = {
+                "source": "runtime_pricing_catalog",
+                "prompt_per_1m": price.prompt_per_1m,
+                "completion_per_1m": price.completion_per_1m,
+            }
+        else:
+            cost_details = {"source": "runtime_pricing_catalog", "error": f"no published rate for model {model!r}"}
+
     entry = {
         "timestamp_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "kind": "chat.completion",
@@ -137,10 +188,12 @@ def _log_ask_user_call(log_path: Path, model: str, question: str, answer: str | 
         "request": {"model": model, "message_count": 2, "framework_prompt": question},
         "response": answer or "",
         "usage": {
-            "prompt_tokens": usage.prompt_tokens if usage else None,
-            "completion_tokens": usage.completion_tokens if usage else None,
-            "total_tokens": usage.total_tokens if usage else None,
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
+            "total_tokens": total_tokens,
         },
+        "cost": cost,
+        "cost_details": cost_details,
         "id": response.id,
         "model": response.model,
         "finish_reason": response.choices[0].finish_reason if response.choices else None,

@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 
 from .adb import capture_sample
 from .custom_tools import DEFAULT_ASK_USER_MODEL
-from .files import slugify, write_json
+from .files import dated_out_dir, slugify, write_json
 from .task_dataset import app_slug, load_dataset, render_prompt, select_tasks
 
 load_dotenv()  # picks up .env from the repo root (or any parent dir) - see README's Setup section
@@ -26,7 +26,11 @@ load_dotenv()  # picks up .env from the repo root (or any parent dir) - see READ
 # off freed up for the next task). Hard tasks get 30 minutes for cross-app multi-step work.
 EASY_TASK_TIMEOUT_SECONDS = 300
 MEDIUM_TASK_TIMEOUT_SECONDS = 1000
-HARD_TASK_TIMEOUT_SECONDS = 1800
+# Hard tasks get NO special wall-clock cap: the step budget (--steps) is the real bound, and on a
+# real phone the battery is the ultimate failsafe anyway (a run that goes on too long just drains
+# the battery and the phone switches off). A 2h wall-clock valve was pointless - the battery dies
+# long before 2h - so it was removed.
+HARD_TASK_TIMEOUT_SECONDS = None
 
 # A task that fails almost immediately with a dropped-request/empty-completion error is a
 # transient LLM-infra blip, not genuine task difficulty (section C3/A4) - only flag failures
@@ -60,7 +64,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--llm-proxy-port-base", type=int, default=8090)
     parser.add_argument("--model", default=os.environ.get("MODEL"))
     parser.add_argument("--temperature", type=float, default=0.0)
-    parser.add_argument("--steps", type=int, default=50)
+    parser.add_argument("--steps", type=int, default=200)
     parser.add_argument("--repeats", type=int, default=1, help="Run each selected task this many times (opt-in; runs are already deterministic at temperature=0).")
     parser.add_argument("--no-screen-record", action="store_true")
     parser.add_argument("--vision", action="store_true", help="Enable vision (screenshots) for the agent; off by default for this harness.")
@@ -114,7 +118,8 @@ def task_timeout_seconds(task: dict[str, object]) -> int | None:
 
     Easy (1-step): 5 minutes - if a single action takes longer, it's stuck.
     Medium (2-3 steps): 1000s (mobilerun's own SDK default).
-    Hard (3-5 cross-app steps): 30 minutes.
+    Hard (3-5 cross-app steps): no wall-clock cap - the step budget (--steps) is the
+    bound, and on a real phone the battery is the ultimate failsafe anyway.
     """
     bucket = task["bucket"]
     if bucket == "easy":
@@ -160,6 +165,8 @@ def build_run_command(
         "--temperature", str(args.temperature),
         "--steps", str(args.steps),
     ]
+    if getattr(args, "run_root", None):
+        command.extend(["--run-root", args.run_root])
     if task.get("task_id"):
         command.extend(["--task-id", task["task_id"]])
     timeout = task_timeout_seconds(task)
@@ -193,8 +200,14 @@ def build_run_command(
 
 
 def find_run_dir(label: str) -> Path | None:
-    """Best-effort: find the run folder `dailybench_runner.py` just created for this label."""
-    matches = sorted(Path("runs").glob(f"*/{slugify(label)}"))
+    """Best-effort: find the run folder `dailybench_runner.py` just created for this label.
+
+    Batch labels are `{sub}--{rest}` and are stored under `runs/<batch>/<sub>/<rest>`
+    (see files.run_dir_for_label), so the day/hard subfolder is included in the glob.
+    """
+    sub, sep, rest = label.partition("--")
+    pattern = f"*/{sub}/{slugify(rest)}" if sep else f"*/{slugify(label)}"
+    matches = sorted(Path("runs").glob(pattern))
     return matches[-1] if matches else None
 
 
@@ -217,11 +230,10 @@ def is_transient_failure(run_dir: Path | None) -> bool:
     return any(marker in reason for marker in TRANSIENT_FAILURE_MARKERS)
 
 
-def write_initial_device_sample(serial: str) -> None:
-    """Write one battery+thermal snapshot to runs/ before any task runs."""
-    root = Path("runs")
-    root.mkdir(parents=True, exist_ok=True)
-    write_json(root / "initial_device_sample.json", capture_sample(serial))
+def write_initial_device_sample(serial: str, batch_dir: Path) -> None:
+    """Write one battery+thermal snapshot into the batch run folder before any task runs."""
+    batch_dir.mkdir(parents=True, exist_ok=True)
+    write_json(batch_dir / "initial_device_sample.json", capture_sample(serial))
 
 
 def main() -> int:
@@ -239,7 +251,10 @@ def main() -> int:
     if args.repeats < 1:
         raise SystemExit("--repeats must be at least 1.")
     if not args.dry_run:
-        write_initial_device_sample(args.serial)
+        batch_dir = dated_out_dir("runs")
+        batch_dir.mkdir(parents=True, exist_ok=True)
+        args.run_root = str(batch_dir)
+        write_initial_device_sample(args.serial, batch_dir)
     ask_user_facts = load_ask_user_facts(ASK_USER_FACTS_PATH)
     unresolved_failures: list[str] = []
     retry_queue: list[tuple[list[str], str, str]] = []  # (command, label, task_id)
@@ -254,6 +269,10 @@ def main() -> int:
         result = subprocess.run(command, check=False)
         if result.returncode != 0:
             run_dir = find_run_dir(label)
+            if run_dir is not None and (run_dir / "PROXY_STARTUP_FAILED").exists():
+                marker = (run_dir / "PROXY_STARTUP_FAILED").read_text(encoding="utf-8").strip()
+                print(f"\nABORTING benchmark: LLM proxy failed to start for {task_id} ({label}) after all retries.\n{marker}", file=sys.stderr)
+                raise SystemExit(2)
             if is_transient_failure(run_dir):
                 print(f"Flagging {task_id} ({label}) for rerun at end of batch - looks like a transient LLM/infra blip, not a real failure: {run_dir}")
                 retry_queue.append((command, label, task_id))

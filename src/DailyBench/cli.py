@@ -15,8 +15,8 @@ from mobilerun import AgentConfig, DeviceConfig, FastAgentConfig, LoggingConfig,
 
 from .adb import capture_sample, read_jsonl, reset_app_state, utc_now
 from .custom_tools import CUSTOM_TOOLS, DEFAULT_ASK_USER_MODEL, build_ask_user_tool
-from .files import make_run_dir, write_json, write_text
-from .processes import start_llm_proxy, start_scrcpy, stop_process, wait_for_proxy_ready
+from .files import make_run_dir, run_dir_for_label, write_json, write_text
+from .processes import ProxyStartupError, start_llm_proxy, start_scrcpy, stop_process, wait_for_proxy_ready
 from .sampler import Sampler
 from .summary import TaskOutcome, summarize
 
@@ -42,7 +42,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--temperature", type=float, default=0.0)
     parser.add_argument("--top-p", type=float, default=0.95)
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--steps", type=int, default=50)
+    parser.add_argument("--steps", type=int, default=200)
     parser.add_argument("--task-timeout", type=int, default=1000, help="Wall-clock seconds before mobilerun's own MobileAgent(timeout=...) aborts the task (mobilerun's own default is 1000; medium+ tasks routinely need more - see docs/cli-reference.md).")
     parser.add_argument("--vision", action="store_true", help="Enable vision (screenshots) for the agent; off by default for this harness.")
     parser.add_argument("--reasoning", action="store_true", help="Use mobilerun's manager/executor planning workflow instead of the fast-agent loop.")
@@ -54,6 +54,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--no-app-reset", action="store_true", help="Skip force-stopping the foreground app and returning home after the run (on by default, for fairness so the next task doesn't inherit this task's UI/navigation state).")
     parser.add_argument("--ask-user-context", default="", help="The hidden ground-truth fact for this task's ask_user tool (Hard/ASK USER tasks only - see the dataset's 'note'/'ask_user_fact' fields). Empty means the simulated user has nothing to reveal.")
     parser.add_argument("--ask-user-model", default=DEFAULT_ASK_USER_MODEL, help="OpenAI model used to play the simulated user for the ask_user tool.")
+    parser.add_argument("--run-root", default=None, help="Optional shared run directory created by the batch; the task's run folder is created inside it (instead of runs/<timestamp>/<label>).")
     return parser
 
 
@@ -177,7 +178,12 @@ def main() -> int:
             "OPENAI_API_KEY required in .env for Hard/ASK USER tasks "
             "(the ask_user tool calls OpenAI's GPT). Set it or omit --ask-user-context."
         )
-    run_dir = make_run_dir("runs", args.label).resolve()
+    if args.run_root:
+        run_dir = run_dir_for_label(args.run_root, args.label)
+        run_dir.mkdir(parents=True, exist_ok=True)
+        run_dir = run_dir.resolve()
+    else:
+        run_dir = make_run_dir("runs", args.label).resolve()
     meta = {
         "run_id": run_dir.name, "label": args.label, "task_id": args.task_id, "serial": args.serial, "started_at_utc": utc_now(),
         "goal": args.goal, "model": args.model, "steps": args.steps, "task_timeout_seconds": args.task_timeout, "sample_interval_seconds": args.sample_interval,
@@ -189,11 +195,16 @@ def main() -> int:
     llm_proxy = None
     api_base = f"http://127.0.0.1:{args.llm_proxy_port}/v1"
     if args.llm_upstream_base:
-        llm_proxy, port, llm_log = start_llm_proxy(run_dir, args.llm_upstream_base, args.llm_proxy_port)
+        try:
+            llm_proxy, port, llm_log = start_llm_proxy(run_dir, args.llm_upstream_base, args.llm_proxy_port)
+            wait_for_proxy_ready(port)
+        except (ProxyStartupError, TimeoutError) as exc:
+            write_text(run_dir / "PROXY_STARTUP_FAILED", str(exc))
+            logging.error("ABORTING run: LLM proxy did not become ready. %s", exc)
+            return 2
         api_base = f"http://127.0.0.1:{port}/v1"
         meta.update({"llm_proxy_port": port, "llm_proxy_base": api_base, "llm_proxy_upstream_base": args.llm_upstream_base, "llm_log_jsonl": str(llm_log)})
         write_json(run_dir / "meta.json", meta)
-        wait_for_proxy_ready(port)
     recording = None if args.no_screen_record else start_scrcpy(args.serial, run_dir, args.screen_bit_rate, args.screen_size)
     sampler = Sampler(args.serial, args.sample_interval, run_dir / "samples.ndjson")
     sampler.start()

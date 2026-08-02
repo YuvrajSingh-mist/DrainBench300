@@ -101,7 +101,7 @@ Since `ask_user` is a genuine `async def` that `await`s a real network call befo
 
 ```json
 {
-  "hard__gmail-contacts__002": "The report your manager is asking about is named 'Q2_Budget.xlsx'. Your manager's name is Priya Sharma, email priya.sharma@company.com.",
+  "hard__gmail-contacts__002": "The report your manager is asking about is named 'Q2_Budget.xlsx'. Your manager's name is Priya Sharma, email b123153@iiit-bh.ac.in.",
   "hard__calendar__003": "The dentist appointment is on 2026-08-05 at 3:30 PM, at Dr. Mehta's Dental Clinic."
 }
 ```
