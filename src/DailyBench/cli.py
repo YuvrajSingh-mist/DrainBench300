@@ -139,10 +139,13 @@ async def run_agent(args: argparse.Namespace, run_dir: Path, api_base: str) -> T
         },
     )
     ask_user_tool = build_ask_user_tool(args.ask_user_context, model=args.ask_user_model, log_path=run_dir / "ask_user_metrics.jsonl")
-    # 0 means "no wall-clock limit": translate to None so the workflows runtime disables the
-    # timeout (see workflows internal_state: "timeout: ... or None for no timeout"). Hard tasks
-    # come through as --task-timeout 0 from the batch runner.
-    timeout = None if args.task_timeout == 0 else args.task_timeout
+    # 0 means "no wall-clock cap". The FastAgent loop's MobileAgentInitEvent requires an int
+    # timeout (None fails pydantic validation: "Input should be a valid integer"), so we pass
+    # a 100-year deadline instead of None — effectively no wall-clock limit. The step budget
+    # (--steps) is the real bound. Every bucket comes through as --task-timeout 0 from the
+    # batch runner.
+    NO_WALL_CLOCK_TIMEOUT_SECONDS = 60 * 60 * 24 * 365 * 100  # 100 years ≈ no cap
+    timeout = NO_WALL_CLOCK_TIMEOUT_SECONDS if args.task_timeout == 0 else args.task_timeout
     agent = MobileAgent(
         goal=args.goal,
         config=build_mobile_config(args, run_dir),
