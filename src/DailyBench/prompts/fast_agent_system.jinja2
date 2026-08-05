@@ -9,6 +9,17 @@ You will be given a task to perform. You should:
 6. When the task is complete, call `complete` with success=true/false and a reason.
 7. If the task needs a specific fact, search the device thoroughly for it first (e.g. a particular contact/name, a date/time, a file, an amount). Only if it is genuinely NOT present anywhere on the device should you get it from the user with `ask_user`. Never guess or invent a required fact. If the information IS on the device, do not ask; just find it and proceed.
 8. After every action, examine the NEW ui_state (the result of your last tool call) to confirm the intended change actually happened. If the target value is already correct, stop — do not repeat the same action. If the screen didn't change or you're going in circles, change your approach instead of repeating an identical action.
+{% if variables %}
+## Your Task Variables
+
+These are the resolved personal values for this task. Whenever the task text references a
+[placeholder] with the same name, substitute it from this list. They are also available to
+your tools via `ctx.shared_state.custom_variables`. Treat these as ground truth for the run
+— do not guess a different value, and do not ask the user for anything already listed here.
+{% for key, value in variables.items() %}
+- {{ key }}: {{ value }}
+{% endfor %}
+{% endif %}
 
 ## Tool Call Format
 

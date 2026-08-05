@@ -1,0 +1,91 @@
+# DrainBench user config — EXAMPLE / defaults.
+#
+# Copy this to `config/user.yaml` and edit the values to YOUR persona, OR just
+# run as-is: the shipped defaults below are a complete, working persona so the
+# benchmark runs out of the box.
+#
+# This is a FLAT key -> value file. Both `key: value` and `key=value` forms are
+# accepted; `#` starts a comment. Keys that match a prompt placeholder (e.g.
+# `contact`, `food_category`, `stock name`) fill that placeholder directly.
+# Keys like `contact_b`, `destination`, `item`, `stock note title` are used by
+# ASK USER fact templates ({...}) and by the seed scripts.
+#
+# Run `uv run python scripts/verify_config.py` after editing to confirm every
+# placeholder, fact, and seed across all 730 tasks resolves.
+
+# ---- people -------------------------------------------------------------
+# The person the agent messages / forwards to for any `[contact]` task.
+# Pick a safe self-target on the test device (e.g. the device's own number).
+contact: Yuvraj Airtel
+
+# The person ASK USER facts mean by "the person I usually message" ({contact_b}).
+contact_b: Yuvraj Singh Jio
+
+# Contact to look up in the Contacts search task (`[contact name]`).
+contact name: Maa
+
+# Gmail sender for the "unread emails from [sender]" tasks (`[sender]`).
+sender: Myntra
+
+# Letter used by the "contacts starting with [letter]" task.
+letter: Y
+
+# ---- location ------------------------------------------------------------
+# Train-departure ASK USER fact destination ({destination}).
+destination: Cuttack
+
+# Maps / weather target place near the device (`[place]`).
+place: Bhubaneswar Airport
+
+# ---- stock tracker (hard task #57) --------------------------------------
+# Stock the agent tracks (`[stock name]`).
+stock name: Reliance Industries
+
+# Title of the Obsidian note holding the threshold + last recorded value
+# (`[stock note title]`). The seed script creates this note on-device.
+stock note title: Stock Watch
+
+# Value the stock must cross to trigger a message (written into the seed note).
+stock threshold: 1,400 INR
+
+# Last recorded value in the stock note (written into the seed note).
+stock last value: 1,385 INR
+
+# ---- notes ---------------------------------------------------------------
+# Obsidian folder where the reschedule/confirm log is saved (`[meeting folder]`).
+meeting folder: Meeting Notes
+
+# Base title for the "Open Source Model News" note (`[news note title]`; the
+# runner appends today's date at run time).
+news note title: Open Source Model News
+
+# Title for the Notes / Obsidian create-note tasks (`[note title]`).
+note title: Daily Reflection
+
+# ---- shopping ------------------------------------------------------------
+# Two sites for the price-comparison task (`[shopping_website_1/_2]`).
+shopping_website_1: amazon.in
+shopping_website_2: flipkart.com
+
+# The item being shopped for, revealed by the ASK USER fact ({item}).
+item: wireless earbuds
+
+# ---- media ---------------------------------------------------------------
+# Photo category for the Gallery "best 3 by resolution" task (`[food_category]`).
+food_category: pizza
+
+# Word to search Messages for (`[search word]`).
+search word: ticket
+
+# ---- misc ----------------------------------------------------------------
+# Generic research topic used by several search tasks (`[topic]`).
+topic: best budget smartphones 2026
+
+# URL for the Chrome summarize-article task (`[article url]`).
+article url: https://en.wikipedia.org/wiki/Open-source_software
+
+# Exchange-rate pair for the Google Search task (`[currency pair]`).
+currency pair: USD to INR
+
+# Digit prefix for the Phone call-history filter task (`[digits]`).
+digits: 98765

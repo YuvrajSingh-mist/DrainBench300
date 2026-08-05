@@ -74,7 +74,7 @@ def _build_fake_agent_class(created_configs: list) -> type:
     """Build a fake MobileAgent that hits the real LLM proxy once, then reports success."""
 
     class _FakeMobileAgent:
-        def __init__(self, goal: str, config, llms, prompts=None, custom_tools=None, timeout=None) -> None:
+        def __init__(self, goal: str, config, llms, prompts=None, custom_tools=None, timeout=None, variables=None) -> None:
             self.goal = goal
             self.llms = llms
             self.prompts = prompts
@@ -157,7 +157,7 @@ def test_cli_main_records_failure_when_agent_raises(monkeypatch, tmp_path: Path)
     """When MobileAgent.run() raises, main() still writes a complete run folder with success=False."""
 
     class _RaisingMobileAgent:
-        def __init__(self, goal: str, config, llms, prompts=None, custom_tools=None, timeout=None) -> None:
+        def __init__(self, goal: str, config, llms, prompts=None, custom_tools=None, timeout=None, variables=None) -> None:
             pass
 
         async def run(self):
@@ -193,7 +193,7 @@ def test_run_agent_builds_llm_with_deterministic_sampling_and_thinking_off(tmp_p
     captured_llms: list = []
 
     class _CapturingFakeAgent:
-        def __init__(self, goal: str, config, llms, prompts=None, custom_tools=None, timeout=None) -> None:
+        def __init__(self, goal: str, config, llms, prompts=None, custom_tools=None, timeout=None, variables=None) -> None:
             captured_llms.append(llms)
 
         async def run(self) -> _FakeResult:

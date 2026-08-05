@@ -97,7 +97,7 @@ Since `ask_user` is a genuine `async def` that `await`s a real network call befo
 
 ### Where the answer comes from (`ask_user_fact`)
 
-`relevant_information` (the one fact each `ASK USER` task is deliberately missing — see the dataset's `note` field for what's missing) is authored once in `benchmarks/dailyBench-600/ask_user_facts.json`, a plain `{task_id: fact}` mapping:
+`relevant_information` (the one fact each `ASK USER` task is deliberately missing — see the dataset's `note` field for what's missing) is authored once per source markdown as a plain `{task_id: fact}` mapping. Consumers derive the file from the source instead of hardcoding a path (`task_dataset.ask_user_facts_path`): `--source tasks.md` uses `benchmarks/dailyBench-600/ask_user_facts_730.json`, `--source public.md` uses `benchmarks/dailyBench-600/ask_user_facts.json`:
 
 ```json
 {
@@ -106,6 +106,6 @@ Since `ask_user` is a genuine `async def` that `await`s a real network call befo
 }
 ```
 
-`scripts/export_public_dataset.py` merges it straight into the published dataset as each task's `ask_user_fact` column (`merge_ask_user_facts`) - public.md is explicitly "not the eval set, a structural preview only," so publishing the answer alongside it doesn't compromise anything real. **This is deliberately different from what the real private benchmark must do**: once `tasks.md` migrates to the same Hard/`ASK USER` format, its own facts must stay out of whatever gets published for it (a gitignored path under `benchmarks/dailyBench-600/tasks-private/` is reserved for that - see the `.gitignore` comment), since leaking the real eval's answers would let a submitter memorize them instead of the agent genuinely asking.
+`scripts/export_public_dataset.py` merges the public facts file (`ask_user_facts.json`, via `ask_user_facts_path("public.md")`) straight into the published dataset as each task's `ask_user_fact` column (`merge_ask_user_facts`) - public.md is explicitly "not the eval set, a structural preview only," so publishing the answer alongside it doesn't compromise anything real. **This is deliberately different from what the real private benchmark does**: `tasks.md`'s facts live in `ask_user_facts_730.json` and are kept out of the published `DailyBench_730_v4` dataset (its rows have no `ask_user_fact`; the batch runner reads the sidecar at run time), since leaking the real eval's answers would let a submitter memorize them instead of the agent genuinely asking.
 
 `dailybench_tasks.py` (the batch runner) reads each task's own `ask_user_fact` field first and, for every task whose `ahi == "ASK USER"`, automatically forwards it as that task's `--ask-user-context` — no manual typing per task. If a dataset row has no `ask_user_fact` (as the future private benchmark's published rows deliberately won't), it falls back to a local `--ask-user-facts` sidecar file instead. A task with neither still runs (empty context — the simulated user just has nothing to reveal and will say so) but prints a warning. Running `dailybench_runner.py` directly (a single task, outside the batch runner) still takes `--ask-user-context` as a plain flag with no lookup, for quick manual testing.

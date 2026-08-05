@@ -9,7 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from DailyBench.task_dataset import merge_ask_user_facts, parse_tasks_markdown, save_dataset_files
+from DailyBench.task_dataset import ask_user_facts_path, merge_ask_user_facts, parse_tasks_markdown, save_dataset_files
 
 
 def main() -> int:
@@ -22,7 +22,9 @@ def main() -> int:
     source_path = "benchmarks/dailyBench-600/public.md"
     source = ROOT / source_path
     dataset = parse_tasks_markdown(source.read_text(encoding="utf-8"), source_path=source_path)
-    merge_ask_user_facts(dataset, ROOT / "benchmarks/dailyBench-600/ask_user_facts.json")
+    # Stays on the PUBLIC facts file (ask_user_facts.json, via ask_user_facts_path) - never the
+    # 730 benchmark's ask_user_facts_730.json, since the preview is fine to publish with answers.
+    merge_ask_user_facts(dataset, ROOT / ask_user_facts_path("public.md"))
     # Per-task prompt overrides that survive regeneration (the datasets are gitignored and
     # rebuilt from this script). easy__contacts__001 is scoped to a different real device
     # contact (Akash Kumar) so the shared `contact` var used by messaging tasks is

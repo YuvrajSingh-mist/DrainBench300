@@ -241,7 +241,9 @@ def parse_tasks_markdown(markdown_text: str, *, source_path: str) -> dict[str, A
                 if note_match:
                     task_body, note = note_match.group(1).strip(), note_match.group(2).strip()
                 cross_app_label = app_label if "+" in app_label else None
-                append_task("hard", index, task_body, app_label, cross_app_label, None, ahi=ahi_tag, note=note)
+                # A hard task sitting inside a `### Day N` block belongs to that day; one under a
+                # standalone `## Hard (...)` section has current_day None (the `##` header resets it).
+                append_task("hard", index, task_body, app_label, cross_app_label, current_day, ahi=ahi_tag, note=note)
                 pending_hard_header = None
                 continue
             pending_hard_header = None
@@ -322,6 +324,31 @@ def parse_tasks_markdown(markdown_text: str, *, source_path: str) -> dict[str, A
 def load_dataset(path: str | Path) -> dict[str, Any]:
     """Load one exported dataset JSON file."""
     return json.loads(Path(path).read_text(encoding="utf-8"))
+
+
+# Facts files are keyed by source markdown, never hardcoded in consumers: the 730-task
+# benchmark (tasks.md) and the 3-day public preview (public.md) each own a separate file,
+# and every consumer derives the path via ask_user_facts_path(source) instead of embedding
+# a path. scripts/export_public_dataset.py must keep publishing from the public file.
+_ASK_USER_FACTS_BY_SOURCE = {
+    "tasks.md": "ask_user_facts_730.json",
+    "public.md": "ask_user_facts.json",
+}
+
+
+def ask_user_facts_path(source: str) -> str:
+    """Return the ask_user_facts file for a task source markdown path.
+
+    Derived from the source's filename (repo-root-relative), so callers pass
+    `--source tasks.md|public.md` and get the right file with no hardcoded path:
+
+      tasks.md  -> benchmarks/dailyBench-600/ask_user_facts_730.json  (730-task benchmark)
+      public.md -> benchmarks/dailyBench-600/ask_user_facts.json      (3-day public preview)
+    """
+    facts_file = _ASK_USER_FACTS_BY_SOURCE.get(Path(source).name)
+    if facts_file is None:
+        raise ValueError(f"Unknown task source {source!r}: expected tasks.md or public.md")
+    return f"benchmarks/dailyBench-600/{facts_file}"
 
 
 def merge_ask_user_facts(dataset: dict[str, Any], facts_path: str | Path) -> None:

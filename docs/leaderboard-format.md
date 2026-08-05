@@ -31,9 +31,11 @@ uv run scripts/dailybench_report.py --model qwen/qwen3.6-plus          # filter 
 ```
 
 This writes `report.json` and `report.md`. Interaction tasks are identified by
-task_id membership in `benchmarks/dailyBench-600/ask_user_facts.json`; run
-folders are joined to the dataset via the `task_id` recorded in `meta.json`
-(falls back to parsing the run `--label` for older runs).
+task_id membership in the ask_user_facts sidecar for the runs' source: `--source
+tasks.md` -> `benchmarks/dailyBench-600/ask_user_facts_730.json`, `--source
+public.md` -> `benchmarks/dailyBench-600/ask_user_facts.json` (overridable with
+`--ask-user-facts`). Run folders are joined to the dataset via the `task_id`
+recorded in `meta.json` (falls back to parsing the run `--label` for older runs).
 
 ## Notes
 

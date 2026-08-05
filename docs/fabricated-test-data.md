@@ -246,10 +246,16 @@ Harness behavior that affects results and is part of the reproducible spec:
   contains a mix of DETERMINISTIC and ASK USER hard tasks (Day 1: 2+2, Day 2: 2+2, Day 3: 1+2).
   The global 1–11 numbering is preserved, so task_ids (and the `ask_user_fact` lookups keyed on
   them) are unchanged. `public.md` and the generated datasets are gitignored (local-only).
+- **2026-08-03 — ask_user_facts split per source.** The combined facts file (50 tasks.md + 6
+  public facts) is split into per-source files, derived via `--source` with no hardcoded paths
+  (`task_dataset.ask_user_facts_path`): `tasks.md` -> `benchmarks/dailyBench-600/ask_user_facts_730.json`
+  (50 facts), `public.md` -> `benchmarks/dailyBench-600/ask_user_facts.json` (the 6 public facts,
+  which `scripts/export_public_dataset.py` publishes). The combined file
+  `ask_user_facts_public.json` is left untouched.
 - **2026-08-03 — Public ASK USER facts restored.** `ask_user_facts.json` had been replaced with
   tasks.md-schedule facts; the 6 public ASK USER facts were merged back in (reconstructed from
   the documented values in §4 and the run analysis — verify against the original file if you
-  have it). File now holds 56 keys (50 tasks.md + 6 public).
+  have it).
 - **2026-08-03 — `easy__contacts__001` override persisted.** The Akash Kumar scoping is now
   applied inside `scripts/export_public_dataset.py`, so it survives regeneration (previously it
   was a manual re-edit of the gitignored dataset).

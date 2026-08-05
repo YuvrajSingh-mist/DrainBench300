@@ -12,8 +12,10 @@ Each run folder contributes:
   meta.json            -> model, label, task_id (task_id may be absent on older
                           runs; it is then reconstructed from --label)
 
-Interaction (ASK USER) tasks are identified by task_id membership in
-benchmarks/dailyBench-600/ask_user_facts.json.
+Interaction (ASK USER) tasks are identified by task_id membership in the ask_user_facts
+sidecar for the runs' source: `--source tasks.md` (default) selects
+benchmarks/dailyBench-600/ask_user_facts_730.json, `--source public.md` selects
+benchmarks/dailyBench-600/ask_user_facts.json (overridable via --ask-user-facts).
 
 Usage:
   uv run scripts/dailybench_report.py --runs runs/2026-08-01-001234
@@ -33,13 +35,20 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from DailyBench.benchmark_metrics import avg_steps, avg_user_queries, success_rate, user_interaction_quality
+from DailyBench.benchmark_metrics import (
+    avg_steps,
+    avg_user_queries,
+    success_rate,
+    user_interaction_quality,
+    user_interaction_quality_factmatch,
+)
 from DailyBench.task_batch import load_ask_user_facts
+from DailyBench.task_dataset import ask_user_facts_path
 
 # Matches both the older flat layout `runs/<batch>/<run-folder>` and the newer
 # per-day layout `runs/<batch>/<day>/<run-folder>` by walking for output.json.
 DEFAULT_RUNS = "runs/**"
-DEFAULT_ASK_USER_FACTS = "benchmarks/dailyBench-600/ask_user_facts.json"
+DEFAULT_SOURCE = "tasks.md"
 REP_SUFFIX_RE = re.compile(r"-rep\d+$")
 
 
@@ -56,6 +65,59 @@ def _count_jsonl_lines(path: Path) -> int:
     if not path.exists():
         return 0
     return sum(1 for line in path.open("r", encoding="utf-8") if line.strip())
+
+
+_TOKEN_RE = re.compile(r"[a-z0-9]+")
+
+
+def _normalize_tokens(text: str) -> set[str]:
+    """Lowercase alphanumeric tokens of a string ('' -> empty set)."""
+    return set(_TOKEN_RE.findall((text or "").lower()))
+
+
+def _answers_match(answer: str, fact: str) -> bool:
+    """True when the simulated user's answer contains the ground-truth fact.
+
+    Digit-bearing tokens (dates/times) are the strong signal: the fact's digit
+    tokens must all appear in the answer. Otherwise fall back to a 60% token
+    overlap against the fact.
+    """
+    answer_tokens = _normalize_tokens(answer)
+    fact_tokens = _normalize_tokens(fact)
+    if not answer_tokens or not fact_tokens:
+        return False
+    fact_digits = {token for token in fact_tokens if any(char.isdigit() for char in token)}
+    answer_digits = {token for token in answer_tokens if any(char.isdigit() for char in token)}
+    if fact_digits and answer_digits:
+        return fact_digits.issubset(answer_digits)
+    overlap = len(answer_tokens & fact_tokens)
+    return overlap / len(fact_tokens) >= 0.6
+
+
+def _count_correct_ask_user(run_dir: Path, fact: str | None) -> int:
+    """# ask_user calls whose returned answer matched the task's ground-truth fact.
+
+    Reads the per-run ask_user_metrics.jsonl and compares each ``response`` to
+    the fact. A question whose answer matched the fact counts as a "right
+    question" even if the overall task failed.
+    """
+    if not fact:
+        return 0
+    log = run_dir / "ask_user_metrics.jsonl"
+    if not log.exists():
+        return 0
+    correct = 0
+    for line in log.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            entry = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if _answers_match(entry.get("response") or "", fact):
+            correct += 1
+    return correct
 
 
 def parse_task_id_from_label(label: str) -> str | None:
@@ -100,8 +162,15 @@ def discover_run_folders(runs_arg: str | None) -> list[Path]:
     return sorted(p.parent for p in root.rglob("output.json") if p.parent.is_dir())
 
 
-def load_run_record(run_dir: Path, interaction_ids: set[str]) -> dict[str, Any]:
-    """Load one run folder into a benchmark_metrics record dict."""
+def load_run_record(
+    run_dir: Path, interaction_ids: set[str], facts: dict[str, str] | None = None
+) -> dict[str, Any]:
+    """Load one run folder into a benchmark_metrics record dict.
+
+    ``facts`` (task_id -> ground-truth fact, from ask_user_facts) lets the record
+    also carry ``ask_user_correct``: the number of ask_user calls whose answer
+    matched the ground truth (used by the success-free UIQ).
+    """
     output = _read_json(run_dir / "output.json") or {}
     meta = _read_json(run_dir / "meta.json") or {}
     run_metrics = _read_json(run_dir / "run_metrics.json") or {}
@@ -121,6 +190,9 @@ def load_run_record(run_dir: Path, interaction_ids: set[str]) -> dict[str, Any]:
     if is_interaction and ask_user_calls == 0:
         success = False
 
+    fact = (facts or {}).get(task_id) if task_id else None
+    ask_user_correct = _count_correct_ask_user(run_dir, fact) if is_interaction else 0
+
     return {
         "run_dir": str(run_dir),
         "label": meta.get("label"),
@@ -130,6 +202,7 @@ def load_run_record(run_dir: Path, interaction_ids: set[str]) -> dict[str, Any]:
         "success": success,
         "steps": int(output.get("steps") or 0),
         "ask_user_calls": ask_user_calls,
+        "ask_user_correct": ask_user_correct,
         "is_interaction": is_interaction,
     }
 
@@ -151,6 +224,7 @@ def build_report(records: list[dict[str, Any]], *, model: str | None = None) -> 
         "average_steps": avg_steps(records),
         "average_user_queries": avg_user_queries(records),
         "user_interaction_quality": user_interaction_quality(records),
+        "user_interaction_quality_factmatch": user_interaction_quality_factmatch(records),
         "interaction_run_count": len(interaction),
         "gui_only_run_count": len(gui_only),
     }
@@ -170,7 +244,8 @@ def render_markdown(report: dict[str, Any]) -> str:
         f"| Success Rate (GUI-only) | {report['gui_only_success_rate']:.1%} ({report['gui_only_run_count']} runs) |",
         f"| Average Completion Steps | {report['average_steps']:.2f} |",
         f"| Average User Queries | {report['average_user_queries']:.2f} |",
-        f"| User Interaction Quality (UIQ) | {report['user_interaction_quality']:.3f} |",
+        f"| User Interaction Quality (UIQ, success-gated) | {report['user_interaction_quality']:.3f} |",
+        f"| User Interaction Quality (UIQ, success-free fact-match) | {report['user_interaction_quality_factmatch']:.3f} |",
         "",
         "### Success rate by bucket",
         "",
@@ -190,7 +265,8 @@ def build_parser() -> argparse.ArgumentParser:
     """Build the CLI parser."""
     parser = argparse.ArgumentParser(description="Aggregate a batch of run folders into MobileWorld-style metrics.")
     parser.add_argument("--runs", default=None, help=f"Run batch dir or glob of run folders (default: {DEFAULT_RUNS}).")
-    parser.add_argument("--ask-user-facts", default=DEFAULT_ASK_USER_FACTS, help=f"task_id -> fact mapping marking interaction tasks (default: {DEFAULT_ASK_USER_FACTS}).")
+    parser.add_argument("--source", choices=("tasks.md", "public.md"), default=DEFAULT_SOURCE, help=f"Task source markdown the runs came from; selects the ask_user_facts sidecar marking interaction tasks (tasks.md -> ask_user_facts_730.json, public.md -> ask_user_facts.json). Default: {DEFAULT_SOURCE}.")
+    parser.add_argument("--ask-user-facts", default=None, help="task_id -> fact mapping marking interaction tasks (default: derived from --source via ask_user_facts_path, e.g. tasks.md -> benchmarks/dailyBench-600/ask_user_facts_730.json).")
     parser.add_argument("--model", default=None, help="Restrict the report to runs whose meta.json model equals this.")
     parser.add_argument("--out", default="report.json", help="JSON report output path.")
     parser.add_argument("--out-md", default="report.md", help="Markdown report output path.")
@@ -204,8 +280,10 @@ def main() -> int:
     if not run_dirs:
         print(f"No run folders found under {args.runs or DEFAULT_RUNS}.")
         return 1
-    interaction_ids = set(load_ask_user_facts(args.ask_user_facts))
-    records = [load_run_record(run_dir, interaction_ids) for run_dir in run_dirs]
+    facts_path = args.ask_user_facts or ask_user_facts_path(args.source)
+    facts = load_ask_user_facts(facts_path)
+    interaction_ids = set(facts)
+    records = [load_run_record(run_dir, interaction_ids, facts) for run_dir in run_dirs]
     report = build_report(records, model=args.model)
     Path(args.out).write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     markdown = render_markdown(report)

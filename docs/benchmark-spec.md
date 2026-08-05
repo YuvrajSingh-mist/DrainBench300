@@ -23,7 +23,7 @@ One benchmark unit is one task run through the harness into one timestamped run 
 - hard-deterministic
 - open-ended
 
-The current canonical task list lives in [docs/tasks.md](/Users/yuvrajsingh9886/Desktop/DrainBench300/docs/tasks.md).
+The canonical runnable task list lives in [benchmarks/dailyBench-600/tasks_530.md](../benchmarks/dailyBench-600/tasks_530.md) — the deterministic 530-task subset (229 easy / 229 medium / 72 hard = 36 ASK USER / 36 DETERMINISTIC); the full 730-corpus superset is `benchmarks/dailyBench-600/tasks.md`.
 
 ## Required run artifacts
 

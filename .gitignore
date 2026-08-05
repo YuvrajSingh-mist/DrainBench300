@@ -1,29 +1,29 @@
-benchmarks/
-datasets/
+# --- generated / regenerable artifacts (do not commit; rebuild via scripts) ---
 seeds/
 runs/
+datasets/
+
+# --- personal / device-specific data (never commit) ---
+.env
+config/user.yaml
+backups/
+.fabricated_test_data.json
+benchmarks/dailyBench-600/tasks_vars.local.env
+benchmarks/dailyBench-600/tasks_vars/
+benchmarks/dailyBench-600/public_vars.local.env
+benchmarks/dailyBench-600/tasks-private/
 report_wireless.json
 report_wireless.md
+
+# --- tooling noise ---
 __pycache__/
 *.pyc
 .pytest_cache/
 .venv/
 .venv
 .venv.nosync/
-.env
 .DS_Store
 src/*.egg-info/
+
 # dev scratch scripts (underscore-prefixed)
 scripts/_*.py
-
-# Reserved for the real private benchmark's ask_user facts, once tasks.md migrates to the same
-# Hard/ASK USER format public.md already uses (see docs/advanced-features.md's Custom tools
-# section) - public.md is a structural preview only, so its own ask_user_facts.json is fine to
-# publish and lives untracked-free at benchmarks/dailyBench-600/ask_user_facts.json instead.
-benchmarks/dailyBench-600/tasks-private/
-
-# Log of real-device data (contacts, notes, etc.) created on the test phone to fill in
-# public.md's [placeholder]s where nothing suitable already existed - tracked locally so it can
-# be cleanly deleted once testing is done. Contains real personal data, never committed.
-.fabricated_test_data.json
-benchmarks/dailyBench-600/public_vars.local.env

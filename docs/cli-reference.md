@@ -67,7 +67,7 @@ Full flag tables for the two harness entry points. See [README.md](../README.md)
 | `--save-trajectory` | `none` | Local trajectory recording level: `none`, `step`, or `action` |
 | `--no-app-reset` | off | Skip the post-run fairness reset for every task in the batch (see below) |
 | `--cooldown-seconds` | `10.0` | Fixed pause between tasks so the device doesn't run continuously into thermal/load territory; `0` disables it |
-| `--ask-user-facts` | `benchmarks/dailyBench-600/ask_user_facts.json` | Fallback per-`task_id` facts for Hard/`ASK USER` tasks, used only when a task's own dataset row has no `ask_user_fact` (see [Custom tools](advanced-features.md#custom-tools-srcdailybenchcustom_toolspy)); missing file means no facts configured (fine for DETERMINISTIC-only selections) |
+| `--source` | `tasks.md` | Task source markdown the dataset was exported from; selects the ask_user_facts sidecar with fallback per-`task_id` facts for Hard/`ASK USER` tasks (`tasks.md` -> `ask_user_facts_730.json`, `public.md` -> `ask_user_facts.json` — see [Custom tools](advanced-features.md#custom-tools-srcdailybenchcustom_toolspy)); used only when a task's own dataset row has no `ask_user_fact`; a missing file means no facts configured (fine for DETERMINISTIC-only selections) |
 | `--ask-user-model` | `gpt-5.4-mini` | Forwarded to every task run's `ask_user` tool — **OpenAI-hosted models only** (see note above) |
 | `--ask-user-base-url` | *(OpenAI's default)* | Forwarded to every task run's `ask_user` tool |
 

@@ -38,6 +38,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--llm-upstream-base", default=None)
     parser.add_argument("--llm-proxy-port", type=int, default=8090)
     parser.add_argument("--goal", required=True, help="The task prompt/instruction for the agent.")
+    parser.add_argument("--var", action="append", default=[], help="Resolved task variable as key=value; passed to mobilerun's native custom_variables (rendered in the system prompt + readable by custom tools via ctx.shared_state.custom_variables).")
     parser.add_argument("--model", default=os.environ.get("MODEL"))
     parser.add_argument("--temperature", type=float, default=0.0)
     parser.add_argument("--top-p", type=float, default=0.95)
@@ -56,6 +57,17 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--ask-user-model", default=DEFAULT_ASK_USER_MODEL, help="OpenAI model used to play the simulated user for the ask_user tool.")
     parser.add_argument("--run-root", default=None, help="Optional shared run directory created by the batch; the task's run folder is created inside it (instead of runs/<timestamp>/<label>).")
     return parser
+
+
+def parse_vars(items: list[str]) -> dict[str, str]:
+    """Parse repeated `key=value` CLI items into a dictionary (mobilerun custom variables)."""
+    values: dict[str, str] = {}
+    for item in items:
+        if "=" not in item:
+            raise SystemExit(f"--var expects key=value, got: {item}")
+        key, value = item.split("=", 1)
+        values[key.strip()] = value
+    return values
 
 
 def build_mobile_config(args: argparse.Namespace, run_dir: Path) -> MobileConfig:
@@ -150,6 +162,7 @@ async def run_agent(args: argparse.Namespace, run_dir: Path, api_base: str) -> T
         goal=args.goal,
         config=build_mobile_config(args, run_dir),
         llms=llm,
+        variables=parse_vars(args.var),  # mobilerun-native custom_variables
         prompts={"fast_agent_system": FAST_AGENT_SYSTEM_PROMPT},
         custom_tools={**CUSTOM_TOOLS, **ask_user_tool},
         timeout=timeout,
@@ -193,7 +206,7 @@ def main() -> int:
         run_dir = make_run_dir("runs", args.label).resolve()
     meta = {
         "run_id": run_dir.name, "label": args.label, "task_id": args.task_id, "serial": args.serial, "started_at_utc": utc_now(),
-        "goal": args.goal, "model": args.model, "steps": args.steps, "task_timeout_seconds": args.task_timeout, "sample_interval_seconds": args.sample_interval,
+        "goal": args.goal, "variables": parse_vars(args.var), "model": args.model, "steps": args.steps, "task_timeout_seconds": args.task_timeout, "sample_interval_seconds": args.sample_interval,
         "temperature": args.temperature, "top_p": args.top_p, "seed": args.seed,
     }
     write_json(run_dir / "meta.json", meta)

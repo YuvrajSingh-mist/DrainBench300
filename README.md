@@ -113,7 +113,7 @@ uv run scripts/dailybench_report.py --runs runs/2026-08-01-001234   # default sc
 uv run scripts/dailybench_report.py --model qwen/qwen3.6-plus       # filter by model
 ```
 
-This writes `report.json` + `report.md` in the current directory. Interaction (ASK USER) tasks are identified via `benchmarks/dailyBench-600/ask_user_facts.json`; each run's `meta.json` records its `task_id` (batch runner passes `--task-id`), and `run_metrics.json` records `ask_user_call_count`. See [docs/leaderboard-format.md](docs/leaderboard-format.md).
+This writes `report.json` + `report.md` in the current directory. Interaction (ASK USER) tasks are identified via the ask_user_facts sidecar for the runs' source: `--source tasks.md` (default) selects `benchmarks/dailyBench-600/ask_user_facts_730.json`, `--source public.md` selects `benchmarks/dailyBench-600/ask_user_facts.json` (overridable with `--ask-user-facts`). Each run's `meta.json` records its `task_id` (batch runner passes `--task-id`), and `run_metrics.json` records `ask_user_call_count`. See [docs/leaderboard-format.md](docs/leaderboard-format.md).
 
 ## Quick start
 
@@ -185,6 +185,8 @@ List a task slice from the dataset:
 uv run dailybench_tasks.py --bucket easy --app gmail --list
 ```
 
+`config/user.yaml` is loaded automatically, so `[placeholder]` values come from there (no `--var` needed for a configured persona); use `--var` to override a single run, `--vars-file` to override a whole day.
+
 Dry-run it first to see the exact commands that would execute:
 
 ```bash
@@ -238,13 +240,53 @@ Full flag reference for both entry points, including the app-reset fairness beha
 
 ## Task dataset
 
-Tasks live in [benchmarks/dailyBench-600/tasks.md](benchmarks/dailyBench-600/tasks.md) — the active source (`docs/tasks.md` is an older dataset, no longer exported by default). After editing it, re-export:
+The corpus is **730 tasks** (`benchmarks/dailyBench-600/tasks.md`, the superset). The **canonical runnable schedule is the deterministic 530-task subset** — 229 easy / 229 medium / 72 hard (36 ASK USER / 36 DETERMINISTIC), ~9-10 apps/day, max 1276 pts — shipped as `tasks_530.md` + `DailyBench_530_v1.json`/`.jsonl`. The batch runner's default `--dataset` is the 530 set; values for every placeholder come from `config/user.yaml` automatically (overridable per run with `--var`, per day with `--vars-file`).
+
+### Prep the dataset (from scratch)
 
 ```bash
+# 1. Export the 730 superset from tasks.md (after editing it):
 uv run scripts/export_tasks_dataset.py
+
+# 2. Build the runnable 530 subset (writes .json + .jsonl):
+uv run scripts/build_530_subset.py
+
+# 3. Regenerate the standalone 530 markdown schedule (round-trip checks itself):
+uv run scripts/export_530_markdown.py --verify
+
+# 4. Point config/user.yaml at your persona (first time only; ships with defaults):
+cp config/user_config.example config/user.yaml   # then edit values
+
+# 5. Verify config resolves every placeholder, ASK USER fact, and seed:
+uv run scripts/verify_config.py
+
+# 6. Generate per-day vars files (tasks_vars/day_N.env) from config + tasks_vars.local.env:
+uv run scripts/generate_day_vars.py --all
+
+# 7. Build a day's fabricated-data seed manifests (e.g. day 1):
+uv run scripts/build_day_seed_manifest.py --day 1
+
+# 8. Materialise the day's seed artifacts (images/docs) and push to the device:
+uv run scripts/seed_day1_data.py --serial "$DAILYBENCH_SERIAL" --no-push   # dry: only materialise into seeds/
+uv run scripts/seed_day1_data.py --serial "$DAILYBENCH_SERIAL"             # real: push onto the phone
 ```
 
-This writes `benchmarks/dailyBench-600/DailyBench_730_v4.json` and `benchmarks/dailyBench-600/DailyBench_730_v4.jsonl`. The JSONL file is the easiest artifact to push to Hugging Face datasets (`uv sync --extra hf` first).
+The 530 `.jsonl` is the easiest artifact to push to Hugging Face datasets (`uv sync --extra hf` first).
+
+### Run a day (530)
+
+The 530 set is the default `--dataset`; `config/user.yaml` supplies the persona values and the per-day vars file supplies that day's overrides. Get a day's task ids from `seeds/full_tasks/day_N/manifests.json` (or `tasks_530.md`), then:
+
+```bash
+uv run dailybench_tasks.py \
+  --serial "$DAILYBENCH_SERIAL" \
+  --llm-upstream-base "$LLM_UPSTREAM" \
+  --model "$MODEL" \
+  --vars-file benchmarks/dailyBench-600/tasks_vars/day_1.env \
+  --task-id easy__chrome__001 --task-id medium__chrome__001 ...   # the day's task ids
+```
+
+Add `--dry-run` first to inspect the exact per-task commands. Each one carries the **raw goal** (placeholders kept) plus the task's resolved `--var` variables (rendered into the agent's system prompt), and — for ASK USER tasks — the hidden ground-truth fact only via `--ask-user-context` (never as a variable).
 
 ## Run artifacts
 
@@ -262,8 +304,9 @@ Run folders are grouped under `runs/<date-time>/...` automatically, and contain 
 - [scripts/export_tasks_dataset.py](scripts/export_tasks_dataset.py): markdown-to-dataset exporter
 - [scripts/smoke_test.sh](scripts/smoke_test.sh): pre-flight check for the LLM server, wired/wireless ADB + mobilerun, and one real end-to-end task
 - [scripts/device_health_check.py](scripts/device_health_check.py): SDK-only device health check used by `smoke_test.sh`
-- [benchmarks/dailyBench-600](benchmarks/dailyBench-600): the active task schedule, public sample, and exported datasets
-- [benchmarks/droidrun300](benchmarks/droidrun300): benchmark content pointers
+- [benchmarks/dailyBench-600](benchmarks/dailyBench-600): task schedules (`tasks.md` = 730 superset, `tasks_530.md` = runnable 530), exported datasets (`.json`/`.jsonl`), public preview, and per-day vars (`tasks_vars/`)
+- [config](config): the user config — `user_config.example` is the committed, documented persona template; copy to `user.yaml` (gitignored) and edit
+- [seeds](seeds): per-day fabricated-data manifests + materialised seed artifacts (images/docs) with on-device paths (`DEVICE_PATHS.md`)
 - [docs](docs): CLI reference, advanced features, run artifacts, methodology, and task authoring notes
 - [reports](reports): benchmark reports and notes
 - [tests](tests): pytest coverage for CLI, parsing, helpers, and process wiring

@@ -15,7 +15,8 @@ from dotenv import load_dotenv
 from .adb import capture_sample
 from .custom_tools import DEFAULT_ASK_USER_MODEL
 from .files import dated_out_dir, slugify, write_json
-from .task_dataset import app_slug, load_dataset, render_prompt, select_tasks
+from .task_dataset import app_slug, ask_user_facts_path, load_dataset, select_tasks
+from .user_config import load_user_config, parse_flat_config, resolve_template, var_map
 
 load_dotenv()  # picks up .env from the repo root (or any parent dir) - see README's Setup section
 
@@ -37,20 +38,28 @@ TRANSIENT_FAILURE_MARKERS = ("Request timed out", "Empty response content")
 
 # Fallback {task_id: fact} mapping for Hard/ASK USER tasks whose dataset row has no
 # `ask_user_fact` of its own (only the public dataset publishes it inline - see
-# docs/advanced-features.md's Custom tools section). Not a CLI flag: there's exactly one
-# relevant facts file at a time, not something worth reconfiguring per invocation.
-ASK_USER_FACTS_PATH = "benchmarks/dailyBench-600/ask_user_facts.json"
+# docs/advanced-features.md's Custom tools section). The facts file is never hardcoded
+# here: --source picks the source markdown and ask_user_facts_path(source) derives the
+# right file (tasks.md -> ask_user_facts_730.json, public.md -> ask_user_facts.json).
+DEFAULT_SOURCE = "tasks.md"
 
 
 def build_parser() -> argparse.ArgumentParser:
     """Build the batch runner CLI parser."""
     parser = argparse.ArgumentParser(description="Run DailyBench task slices from an exported dataset.")
-    parser.add_argument("--dataset", default="benchmarks/dailyBench-600/DailyBench_730_v4.json")
+    parser.add_argument("--dataset", default="benchmarks/dailyBench-600/DailyBench_530_v1.json")
+    parser.add_argument("--source", choices=("tasks.md", "public.md"), default=DEFAULT_SOURCE, help=f"Task source markdown the dataset was exported from; selects the ask_user_facts sidecar for Hard/ASK USER fallback facts (tasks.md -> ask_user_facts_730.json, public.md -> ask_user_facts.json). Default: {DEFAULT_SOURCE}.")
     parser.add_argument("--bucket", choices=["easy", "medium", "hard", "hard-deterministic", "open-ended"])
     parser.add_argument("--app")
     parser.add_argument("--task-id", action="append", default=[])
     parser.add_argument("--var", action="append", default=[])
+    parser.add_argument("--config", default=str(Path(__file__).resolve().parents[2] / "config" / "user.yaml"),
+                        help="Flat user config (config/user.yaml) that resolves prompt placeholders, ASK USER fact templates ({...}) and seed values. CLI --var overrides it.")
+    parser.add_argument("--vars-file", default=None, metavar="PATH",
+                        help="Optional per-day 'key=value' vars file (e.g. benchmarks/dailyBench-600/tasks_vars/day_1.env); merged under --var.")
     parser.add_argument("--limit", type=int)
+    parser.add_argument("--run-root", default=None, help="Run folder root to continue into (e.g. runs/2026-08-03-162853) instead of creating a fresh dated folder. Pair with --resume-from to continue an interrupted batch in place.")
+    parser.add_argument("--resume-from", default=None, metavar="TASK_ID", help="Skip every selected task whose task_id comes before TASK_ID and start at TASK_ID (inclusive), so an interrupted batch can resume without re-running earlier tasks.")
     parser.add_argument("--all", action="store_true", dest="include_all")
     parser.add_argument("--list", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
@@ -144,6 +153,8 @@ def build_run_command(
     repeat_index: int = 1,
     repeats_total: int = 1,
     ask_user_facts: dict[str, str] | None = None,
+    cfg: dict[str, str] | None = None,
+    task_vars: dict[str, str] | None = None,
 ) -> tuple[list[str], str]:
     """Build one `dailybench_runner.py` invocation. Returns (command, label)."""
     repo_root = Path(__file__).resolve().parents[2]
@@ -189,22 +200,34 @@ def build_run_command(
     if task.get("ahi") == "ASK USER":
         fact = task.get("ask_user_fact") or (ask_user_facts or {}).get(task["task_id"])
         if fact is None:
-            print(f"Warning: {task['task_id']} is an ASK USER task but has no ask_user_fact on its dataset row and no entry in {ASK_USER_FACTS_PATH} - its ask_user tool will have nothing to reveal.")
+            print(f"Warning: {task['task_id']} is an ASK USER task but has no ask_user_fact on its dataset row and no entry in {ask_user_facts_path(args.source)} - its ask_user tool will have nothing to reveal.")
+        elif "{" in fact:
+            # fact is a {config_key} template (persona-free) -> resolve from user config
+            if not cfg:
+                raise SystemExit(f"{task['task_id']} fact {fact!r} needs a --config (see config/user_config.example)")
+            fact = resolve_template(fact, cfg)
         command.extend(["--ask-user-context", fact or ""])
     command.extend(["--ask-user-model", args.ask_user_model])
     command.extend(["--goal", prompt])
+    # mobilerun-native custom variables: pass the task's resolved placeholders so
+    # the agent gets them as structured data (rendered in the system prompt, readable
+    # by custom tools). Only this task's placeholders - never the hidden ASK USER fact.
+    if task_vars:
+        for key, value in task_vars.items():
+            command.extend(["--var", f"{key}={value}"])
     return command, label
 
 
-def find_run_dir(label: str) -> Path | None:
+def find_run_dir(label: str, runs_root: str | Path = "runs") -> Path | None:
     """Best-effort: find the run folder `dailybench_runner.py` just created for this label.
 
     Batch labels are `{sub}--{rest}` and are stored under `runs/<batch>/<sub>/<rest>`
     (see files.run_dir_for_label), so the day/hard subfolder is included in the glob.
+    `runs_root` is overridable for hermetic tests.
     """
     sub, sep, rest = label.partition("--")
     pattern = f"*/{sub}/{slugify(rest)}" if sep else f"*/{slugify(label)}"
-    matches = sorted(Path("runs").glob(pattern))
+    matches = sorted(Path(runs_root).glob(pattern))
     return matches[-1] if matches else None
 
 
@@ -238,7 +261,9 @@ def main() -> int:
     args = build_parser().parse_args()
     dataset = load_dataset(args.dataset)
     tasks = select_tasks(dataset, bucket=args.bucket, app=args.app, task_ids=args.task_id, include_all=args.include_all, limit=args.limit)
-    variables = parse_vars(args.var)
+    cfg = load_user_config(args.config)
+    vars_file = parse_flat_config(Path(args.vars_file).read_text(encoding="utf-8")) if args.vars_file else None
+    variables = var_map(cfg, cli_vars=parse_vars(args.var), vars_file=vars_file)
     if args.list:
         for task in tasks:
             print(f"{task['task_id']}\t{task['bucket']}\t{task['app_slug']}\t{task['prompt_text']}")
@@ -248,11 +273,18 @@ def main() -> int:
     if args.repeats < 1:
         raise SystemExit("--repeats must be at least 1.")
     if not args.dry_run:
-        batch_dir = dated_out_dir("runs")
-        batch_dir.mkdir(parents=True, exist_ok=True)
-        args.run_root = str(batch_dir)
-        write_initial_device_sample(args.serial, batch_dir)
-    ask_user_facts = load_ask_user_facts(ASK_USER_FACTS_PATH)
+        if args.run_root:
+            batch_dir = Path(args.run_root).resolve()
+            batch_dir.mkdir(parents=True, exist_ok=True)
+            # Resume path: continue into the existing run root and keep the batch's
+            # original initial_device_sample.json baseline instead of overwriting it.
+            print(f"Continuing into existing run root: {batch_dir}")
+        else:
+            batch_dir = dated_out_dir("runs")
+            batch_dir.mkdir(parents=True, exist_ok=True)
+            args.run_root = str(batch_dir)
+            write_initial_device_sample(args.serial, batch_dir)
+    ask_user_facts = load_ask_user_facts(ask_user_facts_path(args.source))
     unresolved_failures: list[str] = []
     retry_queue: list[tuple[list[str], str, str]] = []  # (command, label, task_id)
     invocation = 0
@@ -278,17 +310,34 @@ def main() -> int:
         if args.cooldown_seconds > 0:
             time.sleep(args.cooldown_seconds)
 
+    resuming = args.resume_from is not None
     for task in tasks:
+        if resuming:
+            if task["task_id"] == args.resume_from:
+                print(f"Resuming batch at {task['task_id']} (reached --resume-from).")
+                resuming = False
+            else:
+                print(f"Skipping {task['task_id']} (before --resume-from {args.resume_from})")
+                continue
         unresolved = [name for name in task["placeholders"] if name not in variables]
         if unresolved and args.skip_unresolved:
             print(f"Skipping {task['task_id']} unresolved placeholders: {', '.join(unresolved)}")
             continue
         if unresolved:
             raise SystemExit(f"Task {task['task_id']} needs --var values for: {', '.join(unresolved)}")
-        prompt = render_prompt(task, variables)
+        # RAW goal + mobilerun-native variables: the goal keeps its [placeholder] slots and
+        # the agent substitutes them from the "Your Task Variables" block rendered into its
+        # system prompt (values appear once, never text-interpolated). Only this task's
+        # resolved placeholders are forwarded - never the hidden ASK USER fact.
+        prompt = task.get("prompt_text") or task.get("prompt_template") or ""
+        task_vars = {ph: variables[ph] for ph in (task.get("placeholders") or []) if ph in variables}
         for repeat_index in range(1, args.repeats + 1):
-            command, label = build_run_command(args, task, prompt, args.llm_proxy_port_base + invocation, repeat_index, args.repeats, ask_user_facts)
+            command, label = build_run_command(args, task, prompt, args.llm_proxy_port_base + invocation, repeat_index, args.repeats, ask_user_facts, cfg, task_vars)
             run_once(command, label, task["task_id"])
+
+    if resuming and args.resume_from is not None:
+        print(f"Error: --resume-from {args.resume_from} was not found among the selected tasks - nothing was run.", file=sys.stderr)
+        return 2
 
     if retry_queue and not args.dry_run:
         print(f"=== Rerunning {len(retry_queue)} task(s) flagged as transient failures ===")

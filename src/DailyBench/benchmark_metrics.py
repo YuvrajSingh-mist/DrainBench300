@@ -79,3 +79,37 @@ def user_interaction_quality(records: Iterable[Record]) -> float:
             numerator += (1.0 if record["success"] else 0.0) / queries
     denominator = len(interaction) + len(triggered)
     return numerator / denominator if denominator else 0.0
+
+
+def user_interaction_quality_factmatch(records: Iterable[Record]) -> float:
+    """Success-free UIQ based on fact retrieval (not task success).
+
+    A call is a "right question" if the simulated user's returned answer matched
+    the task's ground-truth fact (``ask_user_correct``). Task completion is
+    deliberately ignored: asking the right question counts even when the overall
+    task failed for unrelated reasons (e.g. an alarm UI bug).
+
+        UIQ = #correct-answer calls / (
+                  #ask_user calls + #interaction tasks that never asked
+                  + #GUI-only tasks that needlessly invoked ask_user)
+
+    Each never-asked interaction task adds one missed-expected-question to the
+    denominator, so skipping the ask is still penalized.
+    """
+    interaction = [record for record in records if record["is_interaction"]]
+    total_calls = 0
+    correct = 0
+    never_asked = 0
+    for record in interaction:
+        calls = record.get("ask_user_calls") or 0
+        total_calls += calls
+        correct += record.get("ask_user_correct") or 0
+        if calls == 0:
+            never_asked += 1
+    triggered = sum(
+        1
+        for record in records
+        if not record["is_interaction"] and (record.get("ask_user_calls") or 0) > 0
+    )
+    denominator = total_calls + never_asked + triggered
+    return (correct / denominator) if denominator else 0.0

@@ -352,10 +352,14 @@ def test_find_run_dir_globs_for_label_match_under_runs() -> None:
     assert task_batch.find_run_dir("no-such-label") is None
 
 
-def test_find_run_dir_nests_day_subfolder_for_batch_labels() -> None:
-    """Batch labels (day1--easy-gmail-001) resolve under runs/<date>/day1/<run>."""
-    (task_batch.Path("runs") / "2026-07-30-090000" / "day1" / "easy-gmail-001").mkdir(parents=True, exist_ok=True)
-    (task_batch.Path("runs") / "2026-07-30-091500" / "day1" / "easy-gmail-001").mkdir(parents=True, exist_ok=True)
-    found = task_batch.find_run_dir("day1--easy-gmail-001")
-    assert found == task_batch.Path("runs") / "2026-07-30-091500" / "day1" / "easy-gmail-001"
-    assert task_batch.find_run_dir("no-such-label") is None
+def test_find_run_dir_nests_day_subfolder_for_batch_labels(tmp_path) -> None:
+    """Batch labels (day1--easy-gmail-001) resolve under runs/<date>/day1/<run>.
+
+    Uses a hermetic tmp runs root so leftover real run artifacts (e.g. the report run)
+    can't pollute the result.
+    """
+    (tmp_path / "2026-07-30-090000" / "day1" / "easy-gmail-001").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "2026-07-30-091500" / "day1" / "easy-gmail-001").mkdir(parents=True, exist_ok=True)
+    found = task_batch.find_run_dir("day1--easy-gmail-001", runs_root=tmp_path)
+    assert found == tmp_path / "2026-07-30-091500" / "day1" / "easy-gmail-001"
+    assert task_batch.find_run_dir("no-such-label", runs_root=tmp_path) is None
